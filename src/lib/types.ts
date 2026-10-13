@@ -30,6 +30,7 @@ export type EventRow = {
   description: string;
   starts_at: string;
   ends_at: string;
+  venue_id: string | null;
   venue_name: string;
   area: string;
   address: string | null;
@@ -51,7 +52,20 @@ export type EventRow = {
   created_at: string;
 };
 
-export type EventWithOrganizer = EventRow & { organizer: PublicProfile | null };
+/** A venue from the main site's venues table. */
+export type Venue = {
+  id: string;
+  name: string;
+  district: string;
+  address: string;
+  google_maps_url: string | null;
+  photos: string[] | null;
+};
+
+export type EventWithOrganizer = EventRow & {
+  organizer: PublicProfile | null;
+  venue?: Pick<Venue, "id" | "name" | "district" | "address" | "google_maps_url" | "photos"> | null;
+};
 
 export type RosterEntry = {
   user_id: string;

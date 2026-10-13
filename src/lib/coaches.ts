@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CoachWithProfile } from "@/lib/types";
 
 export const COACH_SELECT =
-  "*, profile:profiles!coach_profiles_user_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)";
+  "*, profile:player_profiles!coach_profiles_user_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)";
 
 export type CoachFilters = { area?: string; level?: number; maxPrice?: number; language?: string };
 

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data: profile } = await supabase.from("profiles").select("onboarded").eq("id", data.user.id).single();
+  const { data: profile } = await supabase.from("player_profiles").select("onboarded").eq("id", data.user.id).single();
   const destination = profile?.onboarded ? next : `/onboarding?next=${encodeURIComponent(next)}`;
   return NextResponse.redirect(new URL(destination, url.origin));
 }

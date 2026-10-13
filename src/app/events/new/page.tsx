@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireOnboarded } from "@/lib/auth";
+import { listVenueOptions } from "@/lib/events";
 import { createClient } from "@/lib/supabase/server";
 import { todayInBangkok } from "@/lib/time";
 import { Notice, PageHeader } from "@/components/ui";
@@ -11,7 +12,10 @@ export const metadata: Metadata = { title: "Host an event" };
 export default async function NewEventPage() {
   const profile = await requireOnboarded("/events/new");
   const supabase = await createClient();
-  const { data: settings } = await supabase.from("organizer_settings").select("promptpay_id").eq("user_id", profile.id).maybeSingle();
+  const [{ data: settings }, venues] = await Promise.all([
+    supabase.from("organizer_settings").select("promptpay_id").eq("user_id", profile.id).maybeSingle(),
+    listVenueOptions(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -24,7 +28,7 @@ export default async function NewEventPage() {
           </Notice>
         </div>
       ) : null}
-      <EventForm mode="create" minDate={todayInBangkok()} values={{ level_min: profile.level ? Math.max(1, profile.level - 1) : 3, level_max: profile.level ? Math.min(9, profile.level + 1) : 6, area: profile.areas[0] }} />
+      <EventForm mode="create" minDate={todayInBangkok()} venues={venues} values={{ level_min: profile.level ? Math.max(1, profile.level - 1) : 3, level_max: profile.level ? Math.min(9, profile.level + 1) : 6, area: profile.areas[0] }} />
     </div>
   );
 }

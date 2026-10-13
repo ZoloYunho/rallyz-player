@@ -10,7 +10,7 @@ Built with Next.js 16 (App Router), Tailwind CSS 4 and Supabase (Postgres, Auth,
 - Sign-in with Google or an email link, then onboarding: name, level self-rating, home areas
 - One 9-step level scale (`/levels`) used by every filter, badge and form
 - Events (`/events`): list grouped by day with level, price and spots left on every row; filters for date, area, level, type, open spots and keyword
-- Host an event: type, format, time, venue, area, level range, fee, capacity, instant or approval entry, cancellation deadline, a note only confirmed players see, and weekly repeats (up to 12 weeks in one go)
+- Host an event: type, format, time, venue (picked from the main site's `venues`, or typed in), area, level range, fee, capacity, instant or approval entry, cancellation deadline, a note only confirmed players see, and weekly repeats (up to 12 weeks in one go)
 - Event page: join, request to join, or join the waitlist; leave with late-cancellation flagging; roster; share button; Google Maps link
 - Share preview: posting an event link in Facebook or LINE shows a card with the date, level, price and spots left
 - PromptPay: organizers add their PromptPay number once; confirmed players see a QR code with the fee filled in and tap "I've paid"; organizers confirm on the Manage page
@@ -43,8 +43,11 @@ In the Supabase **SQL Editor**, run `supabase/preflight.sql`. It changes nothing
 ### 2. Create the Rallyz tables
 Run the three files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
 - add new tables, types and functions only; Rallyz's own trigger and helper names start with `rallyz_`
+- keep players in a new `player_profiles` table (name, photo, level, areas). Your `profiles` table, with phone numbers, is never touched or exposed
+- link events to your existing `venues` table, which must exist before you run them
+- create `app_admins` and add the current admin (the email in your claims/venues policies); Rallyz's admin page uses it
 - change permissions only on Rallyz's own functions, never the main site's
-- give every existing account a Rallyz profile; people set their level the first time they open Rallyz
+- give every existing account a player profile, named from `profiles.full_name`; people set their level the first time they open Rallyz
 - add one trigger on new sign-ups that creates a profile. It is fail-safe: if it ever errors, the sign-up still goes through and the profile is created on first visit.
 
 The third migration schedules reminders with `pg_cron`. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
@@ -86,13 +89,15 @@ createBrowserClient(url, key, { cookieOptions: { domain: ".rallyz.club" } })
 ```
 After that deploys, people already signed in on the main site sign in once more; from then on one sign-in covers both. Without this change everything still works, but players sign in separately on each site.
 
-### 7. Make yourself admin
-Sign in once, then in the SQL Editor:
+### 7. Admins
+The migration adds your existing admin account to `app_admins`. To add another:
 ```sql
-update public.profiles set is_admin = true
-where id = (select id from auth.users where email = 'you@example.com');
+insert into public.app_admins (user_id) select id from auth.users where email = 'someone@example.com';
 ```
-You'll see an **Admin** button on My page.
+Admins see an **Admin** button on My page.
+
+### 8. Main-site security fixes (separate from Rallyz)
+`supabase/main-site-security-fixes.sql` closes the holes found in the main site's policies (public booking data, open coach edits, self-service plan upgrades, open holds and notifications). It is **not** a Rallyz migration and needs small main-site code changes, each marked `APP CHANGE` in the file. Follow the rollout in the *Rallyz Supabase Security Review* doc: run it on a branch first. `npm run test:fixes` replays your current policies, shows each hole, applies the fixes and checks the booking flow still works.
 
 ### Later: move under rallyz.club
 When the sprint proves out, serve these pages from `rallyz.club/events` either with Vercel rewrites from the main project to this one (Next.js multi-zones) or by merging the code. The database stays as is.
@@ -101,7 +106,9 @@ When the sprint proves out, serve these pages from `rallyz.club/events` either w
 
 ```
 supabase/migrations/   schema, row-level security, server functions
-supabase/tests/        database flow tests (npm run test:db)
+supabase/tests/        Rallyz flow tests (npm run test:db) and main-site fix tests (npm run test:fixes)
+supabase/preflight.sql read-only name-clash check
+supabase/main-site-security-fixes.sql  fixes for the main site (see section 8)
 src/proxy.ts           refreshes the Supabase session on each request
 src/lib/               Supabase clients, auth helpers, levels/areas, Bangkok time, PromptPay
 src/app/               pages and server actions
@@ -111,7 +118,8 @@ src/components/        shared UI
 **Security model.** Every table has row-level security. Anything that changes participation, waitlist order, counters, payments, instructor approval or badges goes through Postgres functions that check who is calling. The browser can't write those columns directly. PromptPay numbers and meeting-point notes are visible only to the organizer and confirmed players.
 
 **Checks run before handover:**
-- `npm run test:db` covers about 65 flows, including shared-project safety (existing users get profiles, the main site's functions keep working, sign-up can't be blocked), plus: joining, waitlist promotion, approvals, late cancellation, payments, private notes, chat privacy, instructor review, lesson requests, reminders, admin rights, and attempts to bypass each rule
+- `npm run test:db` (74 checks) runs against stand-ins for your `profiles` and `venues` tables. It covers shared-project safety (existing users get profiles, the main site's functions keep working, sign-up can't be blocked), plus: joining, waitlist promotion, approvals, late cancellation, payments, private notes, chat privacy, instructor review, lesson requests, reminders, admin rights, and attempts to bypass each rule
+- `npm run test:fixes` (50 checks) covers the main-site security fixes
 - `npm run typecheck`, `npm run lint` and `npm run build` all pass
 - the PromptPay QR payload matches the widely used `promptpay-qr` library byte for byte
 - the public pages were rendered in Chromium on desktop and phone sizes

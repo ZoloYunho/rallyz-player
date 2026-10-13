@@ -21,7 +21,7 @@ $$;
 
 create function public._display_name(p_user uuid) returns text
 language sql stable security definer set search_path = public as $$
-  select coalesce(nullif(display_name, ''), 'A player') from public.profiles where id = p_user;
+  select coalesce(nullif(display_name, ''), 'A player') from public.player_profiles where id = p_user;
 $$;
 
 create function public._recount(p_event uuid) returns void
@@ -126,7 +126,7 @@ begin
   if v_uid is null then
     return;
   end if;
-  insert into public.profiles (id, display_name, avatar_url)
+  insert into public.player_profiles (id, display_name, avatar_url)
   select u.id,
     left(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', split_part(coalesce(u.email, ''), '@', 1), ''), 60),
     case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
@@ -347,7 +347,7 @@ returns table (user_id uuid, display_name text, avatar_url text, level smallint,
 language sql stable security definer set search_path = public as $$
   select p.user_id, pr.display_name, pr.avatar_url, pr.level, p.status, p.queued_at
   from public.event_participants p
-  join public.profiles pr on pr.id = p.user_id
+  join public.player_profiles pr on pr.id = p.user_id
   where p.event_id = p_event and p.status in ('confirmed', 'waitlisted')
   order by p.status, p.queued_at;
 $$;
@@ -409,7 +409,7 @@ begin
   return query
     select e.fee_thb, s.promptpay_id, pr.display_name
     from public.events e
-    join public.profiles pr on pr.id = e.organizer_id
+    join public.player_profiles pr on pr.id = e.organizer_id
     left join public.organizer_settings s on s.user_id = e.organizer_id
     where e.id = p_event;
 end;
@@ -429,7 +429,7 @@ begin
   if v_uid is null then
     raise exception 'Sign in first' using errcode = '28000';
   end if;
-  if p_other is null or p_other = v_uid or not exists (select 1 from public.profiles where id = p_other) then
+  if p_other is null or p_other = v_uid or not exists (select 1 from public.player_profiles where id = p_other) then
     raise exception 'Cannot start that conversation' using errcode = 'P0001';
   end if;
   v_key := least(v_uid::text, p_other::text) || ':' || greatest(v_uid::text, p_other::text);
@@ -468,7 +468,7 @@ language sql stable security definer set search_path = public as $$
     select m.user_id from public.conversation_members m
     where m.conversation_id = c.id and m.user_id <> me.user_id and c.kind = 'direct' limit 1
   ) o on true
-  left join public.profiles op on op.id = o.user_id
+  left join public.player_profiles op on op.id = o.user_id
   left join lateral (
     select body from public.messages m where m.conversation_id = c.id order by m.created_at desc limit 1
   ) lm on true
@@ -605,7 +605,7 @@ begin
   if not public.rallyz_is_admin() then
     raise exception 'Admins only' using errcode = '42501';
   end if;
-  update public.profiles set is_founding_organizer = p_value where id = p_user;
+  update public.player_profiles set is_founding_organizer = p_value where id = p_user;
   if p_value then
     perform public._notify(p_user, 'founding_organizer',
       'You are now a Rallyz Founding Organizer. Thank you for hosting!', null, auth.uid(), '/me');
@@ -663,7 +663,7 @@ begin
     from generate_series(0, greatest(1, least(p_weeks, 52)) - 1) g
   )
   select w.ws,
-    (select count(*) from public.profiles x where (x.created_at at time zone 'Asia/Bangkok')::date >= w.ws and (x.created_at at time zone 'Asia/Bangkok')::date < w.ws + 7),
+    (select count(*) from public.player_profiles x where (x.created_at at time zone 'Asia/Bangkok')::date >= w.ws and (x.created_at at time zone 'Asia/Bangkok')::date < w.ws + 7),
     (select count(*) from public.events x where (x.created_at at time zone 'Asia/Bangkok')::date >= w.ws and (x.created_at at time zone 'Asia/Bangkok')::date < w.ws + 7),
     (select count(*) from public.event_participants x where (x.created_at at time zone 'Asia/Bangkok')::date >= w.ws and (x.created_at at time zone 'Asia/Bangkok')::date < w.ws + 7),
     (select count(*) from public.lesson_requests x where (x.created_at at time zone 'Asia/Bangkok')::date >= w.ws and (x.created_at at time zone 'Asia/Bangkok')::date < w.ws + 7),

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { Card, field, hint, label } from "@/components/ui";
 import { AREAS, EVENT_TYPES, FORMATS, LEVELS } from "@/lib/constants";
+import type { VenueOption } from "@/lib/events";
 import { createEvent, updateEvent } from "./actions";
 
 export type EventFormValues = {
@@ -14,6 +15,7 @@ export type EventFormValues = {
   date?: string;
   start_time?: string;
   end_time?: string;
+  venue_id?: string | null;
   venue_name?: string;
   area?: string;
   address?: string;
@@ -47,9 +49,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function EventForm({ mode, values = {}, minDate }: { mode: "create" | "edit"; values?: EventFormValues; minDate: string }) {
+export function EventForm({
+  mode,
+  values = {},
+  minDate,
+  venues,
+}: {
+  mode: "create" | "edit";
+  values?: EventFormValues;
+  minDate: string;
+  venues: VenueOption[];
+}) {
   const [state, action] = useActionState(mode === "create" ? createEvent : updateEvent, undefined);
   const v = values;
+  const byDistrict = new Map<string, VenueOption[]>();
+  for (const venue of venues) byDistrict.set(venue.district || "Other", [...(byDistrict.get(venue.district || "Other") ?? []), venue]);
 
   return (
     <form action={action} className="space-y-5">
@@ -105,9 +119,21 @@ export function EventForm({ mode, values = {}, minDate }: { mode: "create" | "ed
             <p className={hint}>Creates a separate event for each week, so players join each date on its own.</p>
           </div>
         ) : null}
+        <div className="sm:col-span-2">
+          <label htmlFor="venue_id" className={label}>Venue</label>
+          <select id="venue_id" name="venue_id" defaultValue={v.venue_id ?? ""} className={field}>
+            <option value="">Not listed: I&apos;ll type it below</option>
+            {[...byDistrict.entries()].map(([district, list]) => (
+              <optgroup key={district} label={district}>
+                {list.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <p className={hint}>Listed venues show their photos and map on the event page.</p>
+        </div>
         <div>
-          <label htmlFor="venue_name" className={label}>Venue</label>
-          <input id="venue_name" name="venue_name" required maxLength={120} defaultValue={v.venue_name} className={field} placeholder="Lumphini Park tennis courts" />
+          <label htmlFor="venue_name" className={label}>Venue name if not listed</label>
+          <input id="venue_name" name="venue_name" maxLength={120} defaultValue={v.venue_id ? "" : v.venue_name} className={field} placeholder="Condo courts, Sukhumvit 24" />
         </div>
         <div>
           <label htmlFor="area" className={label}>Area</label>

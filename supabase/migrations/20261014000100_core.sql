@@ -25,10 +25,14 @@ create type public.lesson_request_status as enum ('pending', 'accepted', 'declin
 create type public.conversation_kind as enum ('direct', 'event');
 
 -- ---------------------------------------------------------------------------
--- Profiles
+-- Player profiles
+--
+-- The project's existing public.profiles table holds private details (phone)
+-- and stays untouched. Rallyz keeps its own table with only fields that are
+-- safe to show other players.
 -- ---------------------------------------------------------------------------
 
-create table public.profiles (
+create table public.player_profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default '' check (char_length(display_name) <= 60),
   avatar_url text check (avatar_url is null or (avatar_url ~ '^https://' and char_length(avatar_url) <= 500)),
@@ -37,29 +41,28 @@ create table public.profiles (
   bio text not null default '' check (char_length(bio) <= 500),
   onboarded boolean not null default false,
   is_founding_organizer boolean not null default false,
-  is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
+alter table public.player_profiles enable row level security;
 
-create policy "profiles are public" on public.profiles
+create policy "player profiles are public" on public.player_profiles
   for select using (true);
 
-create policy "users update their own profile" on public.profiles
+create policy "users update their own profile" on public.player_profiles
   for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
--- Users may only touch their own editable columns; badges and admin rights
--- are set by admins in the dashboard or SQL editor.
-revoke insert, update, delete on public.profiles from anon, authenticated;
-grant update (display_name, avatar_url, level, areas, bio, onboarded) on public.profiles to authenticated;
+-- Users may only touch their own editable columns; the Founding Organizer
+-- badge is set by admins.
+revoke insert, update, delete on public.player_profiles from anon, authenticated;
+grant update (display_name, avatar_url, level, areas, bio, onboarded) on public.player_profiles to authenticated;
 
 -- Create a profile row for every new auth user.
 create function public.rallyz_handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, display_name, avatar_url)
+  insert into public.player_profiles (id, display_name, avatar_url)
   values (
     new.id,
     left(coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(coalesce(new.email, ''), '@', 1), ''), 60),
@@ -79,25 +82,56 @@ create trigger rallyz_on_auth_user_created
   after insert on auth.users
   for each row execute function public.rallyz_handle_new_user();
 
--- People who signed up on the main site before Rallyz existed get a profile
--- too (they set their level in onboarding the first time they visit).
-insert into public.profiles (id, display_name, avatar_url)
-select
-  u.id,
-  left(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', split_part(coalesce(u.email, ''), '@', 1), ''), 60),
-  case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
-from auth.users u
-on conflict (id) do nothing;
+-- People who signed up on the main site before Rallyz existed get a player
+-- profile too, named from the main site's profiles.full_name when there is
+-- one (they set their level in onboarding the first time they visit).
+do $$
+begin
+  if to_regclass('public.profiles') is not null then
+    execute $q$
+      insert into public.player_profiles (id, display_name, avatar_url)
+      select u.id,
+        left(coalesce(nullif(p.full_name, ''), u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name',
+                      split_part(coalesce(u.email, ''), '@', 1), ''), 60),
+        case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      on conflict (id) do nothing
+    $q$;
+  else
+    insert into public.player_profiles (id, display_name, avatar_url)
+    select u.id,
+      left(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', split_part(coalesce(u.email, ''), '@', 1), ''), 60),
+      case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
+    from auth.users u
+    on conflict (id) do nothing;
+  end if;
+end;
+$$;
+
+-- Admins, by user id. Seeded from the main site's existing rule (the admin
+-- email in the claims/venues policies). Add more with:
+--   insert into public.app_admins (user_id) select id from auth.users where email = '...';
+create table if not exists public.app_admins (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.app_admins enable row level security;
+revoke all on public.app_admins from anon, authenticated;
+
+insert into public.app_admins (user_id)
+select id from auth.users where lower(email) = 'zoloyunho1@gmail.com'
+on conflict do nothing;
 
 create function public.rallyz_is_admin(uid uuid default auth.uid()) returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from public.profiles where id = uid), false);
+  select exists (select 1 from public.app_admins where user_id = uid);
 $$;
 
 -- Where organizers receive PromptPay payments. Private to the owner; shown to
 -- confirmed participants only through get_payment_info().
 create table public.organizer_settings (
-  user_id uuid primary key references public.profiles (id) on delete cascade,
+  user_id uuid primary key references public.player_profiles (id) on delete cascade,
   promptpay_id text check (promptpay_id ~ '^(0[0-9]{9}|[0-9]{13})$'),
   updated_at timestamptz not null default now()
 );
@@ -119,13 +153,14 @@ revoke all on public.organizer_settings from anon;
 
 create table public.events (
   id uuid primary key default gen_random_uuid(),
-  organizer_id uuid not null references public.profiles (id) on delete cascade,
+  organizer_id uuid not null references public.player_profiles (id) on delete cascade,
   sport text not null default 'tennis',
   type public.event_type not null default 'practice',
   title text not null check (char_length(title) between 3 and 120),
   description text not null default '' check (char_length(description) <= 5000),
   starts_at timestamptz not null,
   ends_at timestamptz not null,
+  venue_id uuid references public.venues (id) on delete set null,
   venue_name text not null check (char_length(venue_name) between 2 and 120),
   area text not null,
   address text check (char_length(address) <= 300),
@@ -153,6 +188,7 @@ create table public.events (
 create index events_upcoming_idx on public.events (starts_at) where cancelled_at is null;
 create index events_organizer_idx on public.events (organizer_id, starts_at);
 create index events_series_idx on public.events (series_id);
+create index events_venue_idx on public.events (venue_id, starts_at);
 create index events_area_idx on public.events (area, starts_at) where cancelled_at is null;
 
 alter table public.events enable row level security;
@@ -170,11 +206,11 @@ create policy "organizers edit their events" on public.events
 
 -- Counters, cancellation and reminders are owned by the functions below.
 revoke insert, update, delete on public.events from anon, authenticated;
-grant insert (id, organizer_id, sport, type, title, description, starts_at, ends_at, venue_name, area, address,
+grant insert (id, organizer_id, sport, type, title, description, starts_at, ends_at, venue_id, venue_name, area, address,
               courts, level_min, level_max, fee_thb, capacity, format, entry_mode, cancel_deadline_hours,
               cancellation_policy, series_id)
   on public.events to authenticated;
-grant update (type, title, description, starts_at, ends_at, venue_name, area, address, courts, level_min,
+grant update (type, title, description, starts_at, ends_at, venue_id, venue_name, area, address, courts, level_min,
               level_max, fee_thb, capacity, format, entry_mode, cancel_deadline_hours, cancellation_policy)
   on public.events to authenticated;
 
@@ -188,7 +224,7 @@ alter table public.event_private_notes enable row level security;
 
 create table public.event_participants (
   event_id uuid not null references public.events (id) on delete cascade,
-  user_id uuid not null references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.player_profiles (id) on delete cascade,
   status public.participant_status not null,
   payment_status public.payment_status not null default 'unpaid',
   queued_at timestamptz not null default now(),
@@ -250,7 +286,7 @@ create table public.conversations (
 
 create table public.conversation_members (
   conversation_id uuid not null references public.conversations (id) on delete cascade,
-  user_id uuid not null references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.player_profiles (id) on delete cascade,
   last_read_at timestamptz not null default now(),
   joined_at timestamptz not null default now(),
   primary key (conversation_id, user_id)
@@ -261,7 +297,7 @@ create index conversation_members_user_idx on public.conversation_members (user_
 create table public.messages (
   id bigint generated always as identity primary key,
   conversation_id uuid not null references public.conversations (id) on delete cascade,
-  sender_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
+  sender_id uuid not null default auth.uid() references public.player_profiles (id) on delete cascade,
   body text not null check (char_length(btrim(body)) between 1 and 2000),
   created_at timestamptz not null default now()
 );
@@ -321,10 +357,10 @@ create trigger on_message_sent
 
 create table public.notifications (
   id bigint generated always as identity primary key,
-  user_id uuid not null references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.player_profiles (id) on delete cascade,
   kind text not null,
   event_id uuid references public.events (id) on delete cascade,
-  actor_id uuid references public.profiles (id) on delete set null,
+  actor_id uuid references public.player_profiles (id) on delete set null,
   link text,
   body text not null,
   read_at timestamptz,
@@ -349,7 +385,7 @@ grant update (read_at) on public.notifications to authenticated;
 -- ---------------------------------------------------------------------------
 
 create table public.coach_profiles (
-  user_id uuid primary key references public.profiles (id) on delete cascade,
+  user_id uuid primary key references public.player_profiles (id) on delete cascade,
   headline text not null check (char_length(headline) between 5 and 100),
   bio text not null default '' check (char_length(bio) <= 3000),
   rate_private_thb integer not null check (rate_private_thb between 0 and 100000),
@@ -409,7 +445,7 @@ create trigger coach_profile_touch
 create table public.lesson_requests (
   id uuid primary key default gen_random_uuid(),
   coach_id uuid not null references public.coach_profiles (user_id) on delete cascade,
-  player_id uuid not null references public.profiles (id) on delete cascade,
+  player_id uuid not null references public.player_profiles (id) on delete cascade,
   kind public.lesson_kind not null default 'private',
   players smallint not null default 1 check (players between 1 and 12),
   preferred_at timestamptz not null,

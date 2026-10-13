@@ -16,12 +16,16 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const userId = await getUserId();
   if (!userId) return null;
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-  if (data) return data as Profile;
-  // Signed in on the shared project but no Rallyz profile yet: create it.
-  await supabase.rpc("rallyz_ensure_profile");
-  const { data: created } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-  return (created as Profile | null) ?? null;
+  let { data } = await supabase.from("player_profiles").select("*").eq("id", userId).maybeSingle();
+  if (!data) {
+    // Signed in on the shared project but no Rallyz profile yet: create it.
+    await supabase.rpc("rallyz_ensure_profile");
+    ({ data } = await supabase.from("player_profiles").select("*").eq("id", userId).maybeSingle());
+  }
+  if (!data) return null;
+  // Admin rights live in app_admins, shared with the main site's rules.
+  const { data: isAdmin } = await supabase.rpc("rallyz_is_admin");
+  return { ...(data as Omit<Profile, "is_admin">), is_admin: isAdmin === true };
 });
 
 /** Redirects to sign-in (and back afterwards) when signed out. */

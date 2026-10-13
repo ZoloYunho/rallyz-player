@@ -28,7 +28,7 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
   const [{ data: memberRows }, { data: messageRows }, { data: lessonRows }] = await Promise.all([
     supabase
       .from("conversation_members")
-      .select("user_id, profile:profiles!conversation_members_user_id_fkey(display_name, avatar_url)")
+      .select("user_id, profile:player_profiles!conversation_members_user_id_fkey(display_name, avatar_url)")
       .eq("conversation_id", id),
     supabase.from("messages").select("*").eq("conversation_id", id).order("created_at", { ascending: false }).limit(100),
     conv.kind === "direct"

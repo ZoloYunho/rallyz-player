@@ -54,7 +54,7 @@ export default async function MePage(props: PageProps<"/me">) {
   const lessonList = (lessons ?? []) as LessonRequest[];
   const otherIds = [...new Set(lessonList.map((l) => (l.coach_id === me.id ? l.player_id : l.coach_id)))];
   const { data: people } = otherIds.length
-    ? await supabase.from("profiles").select("id, display_name, avatar_url, level, is_founding_organizer").in("id", otherIds)
+    ? await supabase.from("player_profiles").select("id, display_name, avatar_url, level, is_founding_organizer").in("id", otherIds)
     : { data: [] };
   const peopleById = new Map(((people ?? []) as PublicProfile[]).map((p) => [p.id, p]));
   const lessonRows = lessonList.map((l) => ({ ...l, player: peopleById.get(l.player_id) ?? null, coach: peopleById.get(l.coach_id) ?? null }));

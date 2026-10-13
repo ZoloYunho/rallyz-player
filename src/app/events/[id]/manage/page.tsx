@@ -62,7 +62,7 @@ export default async function ManageEventPage(props: PageProps<"/events/[id]/man
   const [{ data }, { data: note }] = await Promise.all([
     supabase
       .from("event_participants")
-      .select("user_id, status, payment_status, cancelled_late, queued_at, updated_at, player:profiles!event_participants_user_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)")
+      .select("user_id, status, payment_status, cancelled_late, queued_at, updated_at, player:player_profiles!event_participants_user_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)")
       .eq("event_id", id)
       .order("queued_at"),
     supabase.from("event_private_notes").select("note").eq("event_id", id).maybeSingle(),

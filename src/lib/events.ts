@@ -2,10 +2,10 @@ import "server-only";
 import { EVENT_TYPES } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import { bangkokDayRange } from "@/lib/time";
-import type { EventWithOrganizer } from "@/lib/types";
+import type { EventWithOrganizer, Venue } from "@/lib/types";
 
 export const EVENT_SELECT =
-  "*, organizer:profiles!events_organizer_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)";
+  "*, organizer:player_profiles!events_organizer_id_fkey(id, display_name, avatar_url, level, is_founding_organizer), venue:venues(id, name, district, address, google_maps_url, photos)";
 
 export type EventFilters = {
   day?: string;
@@ -67,4 +67,21 @@ export async function getEvent(id: string): Promise<EventWithOrganizer | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("events").select(EVENT_SELECT).eq("id", id).maybeSingle();
   return (data as EventWithOrganizer | null) ?? null;
+}
+
+export type VenueOption = Pick<Venue, "id" | "name" | "district">;
+
+/** Active venues from the main site, tennis venues only when any are tagged. */
+export async function listVenueOptions(): Promise<VenueOption[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("venues")
+    .select("id, name, district, sports")
+    .eq("is_active", true)
+    .order("district")
+    .order("name")
+    .limit(1000);
+  const rows = (data ?? []) as (VenueOption & { sports: string[] | null })[];
+  const tennis = rows.filter((v) => (v.sports ?? []).some((s) => /tennis/i.test(s)));
+  return (tennis.length ? tennis : rows).map(({ id, name, district }) => ({ id, name, district }));
 }

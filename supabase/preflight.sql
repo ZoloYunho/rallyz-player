@@ -2,11 +2,11 @@
 -- Run this in the Supabase SQL Editor before the migrations. It lists any
 -- existing objects whose names Rallyz would create. If it returns no rows,
 -- the migrations are safe to run. If it returns rows, send them over and the
--- migrations will be adapted (for example, to reuse an existing profiles table).
+-- migrations will be adapted.
 
 with wanted(kind, name) as (
   values
-    ('table', 'profiles'), ('table', 'organizer_settings'), ('table', 'events'),
+    ('table', 'player_profiles'), ('table', 'app_admins'), ('table', 'organizer_settings'), ('table', 'events'),
     ('table', 'event_private_notes'), ('table', 'event_participants'), ('table', 'conversations'),
     ('table', 'conversation_members'), ('table', 'messages'), ('table', 'notifications'),
     ('table', 'coach_profiles'), ('table', 'lesson_requests'),

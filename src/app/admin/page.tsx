@@ -56,7 +56,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
     supabase.rpc("admin_weekly_metrics", { p_weeks: 12 }),
     supabase
       .from("events")
-      .select("organizer_id, organizer:profiles!events_organizer_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)")
+      .select("organizer_id, organizer:player_profiles!events_organizer_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)")
       .gte("created_at", daysAgoIso(60))
       .limit(1000),
   ]);

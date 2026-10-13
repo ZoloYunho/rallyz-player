@@ -169,6 +169,16 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
       {/* Summary and actions */}
       <aside className="order-first space-y-4 lg:order-last lg:sticky lg:top-20 lg:self-start">
         <Card className="space-y-3">
+          {event.venue?.photos?.[0]?.startsWith("https://") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={event.venue.photos[0]}
+              alt={event.venue.name}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="-mx-5 -mt-5 mb-1 aspect-[16/9] w-[calc(100%+2.5rem)] max-w-none rounded-t-2xl object-cover"
+            />
+          ) : null}
           <dl className="space-y-2 text-sm">
             <div>
               <dt className="text-muted">When</dt>
@@ -188,7 +198,11 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
                   className="text-court underline"
                   target="_blank"
                   rel="noreferrer"
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.venue_name} ${event.address ?? ""} ${event.area} Bangkok`)}`}
+                  href={
+                    event.venue?.google_maps_url?.startsWith("https://")
+                      ? event.venue.google_maps_url
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.venue_name} ${event.address ?? ""} ${event.area} Bangkok`)}`
+                  }
                 >
                   Open in Maps
                 </a>

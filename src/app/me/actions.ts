@@ -33,7 +33,7 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
 
   const supabase = await createClient();
   const { error } = await supabase
-    .from("profiles")
+    .from("player_profiles")
     .update({ ...parsed.data, onboarded: true })
     .eq("id", userId);
   if (error) return { error: error.message };
@@ -49,7 +49,7 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("profiles").update(parsed.data).eq("id", userId);
+  const { error } = await supabase.from("player_profiles").update(parsed.data).eq("id", userId);
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
   return { ok: "Profile saved." };

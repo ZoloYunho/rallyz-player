@@ -29,8 +29,24 @@ await db.exec(`
 // one of the main site's own functions that must keep working.
 const EXISTING = '00000000-0000-0000-0000-0000000000ee';
 await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'old@x.com', '{"name":"Old Member","avatar_url":"http://insecure/a.png"}')`, [EXISTING]);
+const OLD_ADMIN = '00000000-0000-0000-0000-0000000000ad';
+await db.query(`insert into auth.users (id, email) values ($1, 'ZoloYunho1@gmail.com')`, [OLD_ADMIN]);
 await db.exec(`create function public.main_site_search_courts() returns int language sql as $$ select 42 $$;
   grant execute on function public.main_site_search_courts() to authenticated;`);
+// Replica of the main site's private profiles table (phone must never leak)
+// and its public venues table.
+await db.exec(`
+  create table public.profiles (id uuid primary key, full_name text, phone text, created_at timestamptz default now());
+  alter table public.profiles enable row level security;
+  create policy profiles_select on public.profiles for select using (auth.uid() = id);
+  create policy profiles_update on public.profiles for update using (auth.uid() = id);
+  create table public.venues (id uuid primary key default gen_random_uuid(), name text not null, district text not null,
+    address text not null default '', google_maps_url text, photos text[], is_active boolean default true, sports text[] not null default '{}');
+  alter table public.venues enable row level security;
+  create policy venues_public_read on public.venues for select using (true);
+`);
+await db.query(`insert into public.profiles (id, full_name, phone) values ($1, 'Somchai Old-Member', '0811111111')`, [EXISTING]);
+const VENUE = (await db.query(`insert into public.venues (name, district, address, sports) values ('Lumphini Park Tennis', 'Pathum Wan', 'Rama IV Rd', '{tennis}') returning id`)).rows[0].id;
 
 await db.exec(readFileSync(MIG + '20261014000100_core.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000200_functions.sql', 'utf8'));
@@ -38,9 +54,11 @@ console.log('migrations applied');
 
 // --- shared-project safety
 {
-  const [p] = (await db.query(`select display_name, avatar_url from public.profiles where id = $1`, [EXISTING])).rows;
-  assert.equal(p.display_name, 'Old Member'); assert.equal(p.avatar_url, null);
-  console.log('  ok: existing main-site user got a profile (unsafe avatar dropped)');
+  const [p] = (await db.query(`select display_name, avatar_url from public.player_profiles where id = $1`, [EXISTING])).rows;
+  assert.equal(p.display_name, 'Somchai Old-Member'); assert.equal(p.avatar_url, null);
+  console.log("  ok: existing user got a player profile named from the main site's full_name (unsafe avatar dropped)");
+  assert.equal((await db.query(`select count(*)::int n from public.app_admins where user_id = $1`, [OLD_ADMIN])).rows[0].n, 1);
+  console.log("  ok: main site's admin email seeded into app_admins");
   await db.exec(`reset role`);
   await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [EXISTING]);
   await db.exec(`set role authenticated`);
@@ -54,11 +72,11 @@ console.log('migrations applied');
     [JSON.stringify({ full_name: 'x'.repeat(500) })]);
   console.log('  ok: sign-up succeeds and profile name is trimmed');
   // A missing profile is recreated on demand.
-  await db.query(`delete from public.profiles where id = '00000000-0000-0000-0000-0000000000e1'`);
+  await db.query(`delete from public.player_profiles where id = '00000000-0000-0000-0000-0000000000e1'`);
   await db.query(`select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000e1', false)`);
   await db.exec(`set role authenticated`);
   await db.query(`select public.rallyz_ensure_profile()`);
-  assert.equal((await db.query(`select count(*)::int n from public.profiles where id = '00000000-0000-0000-0000-0000000000e1'`)).rows[0].n, 1);
+  assert.equal((await db.query(`select count(*)::int n from public.player_profiles where id = '00000000-0000-0000-0000-0000000000e1'`)).rows[0].n, 1);
   await db.exec(`reset role`);
   console.log('  ok: missing profile recreated by ensure_profile');
 }
@@ -74,7 +92,7 @@ for (const [k, id] of Object.entries(U)) {
   await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`,
     [id, `${k.toLowerCase()}@x.com`, JSON.stringify({ full_name: 'User ' + k })]);
 }
-await db.query(`update public.profiles set is_admin = true where id = $1`, [U.M]);
+await db.query(`insert into public.app_admins (user_id) values ($1)`, [U.M]);
 
 async function as(uid) {
   await db.exec(`reset role`);
@@ -94,10 +112,10 @@ const ok = (label) => console.log('  ok:', label);
 
 // --- profiles
 await as(U.B);
-assert.equal((await q(`select display_name from profiles where id=$1`, [U.B]))[0].display_name, 'User B'); ok('profile created from auth user');
-await q(`update profiles set level=4, areas='{Ari}', onboarded=true where id=$1`, [U.B]); ok('user edits own profile');
-await fails('user cannot make self admin', `update profiles set is_admin=true where id=$1`, [U.B], /permission denied/);
-const r0 = await db.query(`update profiles set level=9 where id=$1`, [U.A]);
+assert.equal((await q(`select display_name from player_profiles where id=$1`, [U.B]))[0].display_name, 'User B'); ok('profile created from auth user');
+await q(`update player_profiles set level=4, areas='{Ari}', onboarded=true where id=$1`, [U.B]); ok('user edits own profile');
+await fails('user cannot make self admin', `update player_profiles set is_founding_organizer=true where id=$1`, [U.B], /permission denied/);
+const r0 = await db.query(`update player_profiles set level=9 where id=$1`, [U.A]);
 assert.equal(r0.affectedRows ?? 0, 0); ok('user cannot edit others');
 
 // --- events
@@ -276,10 +294,21 @@ await as(U.B);
 await fails('non-admin cannot grant badge', `select admin_set_founding_organizer($1,true)`, [U.B], /Admins/);
 await as(U.M);
 await q(`select admin_set_founding_organizer($1,true)`, [U.A]);
-assert.equal((await q(`select is_founding_organizer f from profiles where id=$1`, [U.A]))[0].f, true); ok('admin grants Founding Organizer');
+assert.equal((await q(`select is_founding_organizer f from player_profiles where id=$1`, [U.A]))[0].f, true); ok('admin grants Founding Organizer');
 await as(null);
 const open = await q(`select title, spots_left from events where cancelled_at is null and spots_left > 0 order by title`);
 ok('spots_left filter: ' + JSON.stringify(open));
+// --- main-site privacy and venue link
+await as(U.B);
+assert.equal((await q(`select count(*)::int n from public.profiles`))[0].n, 0); ok("players can't read the main site's profiles (phones stay private)");
+await fails('player_profiles has no phone column', `select phone from public.player_profiles`, [], /phone/);
+await as(U.A);
+const [ve] = await q(`insert into events (organizer_id,title,starts_at,ends_at,venue_id,venue_name,area,level_min,level_max,capacity)
+  values ($1,'At a listed venue',$2,$3,$4,'Lumphini Park Tennis','Lumphini',2,5,4) returning id, venue_id`, [U.A, in3d, in3dEnd, VENUE]);
+assert.equal(ve.venue_id, VENUE); ok('event linked to a main-site venue');
+await db.exec('reset role');
+await q(`delete from public.venues where id=$1`, [VENUE]);
+assert.equal((await q(`select venue_id from events where id=$1`, [ve.id]))[0].venue_id, null); ok('deleting a venue keeps the event (link cleared)');
 console.log('\nALL DATABASE TESTS PASSED');
 } catch (e) {
   console.error('FAILED:', e.message);

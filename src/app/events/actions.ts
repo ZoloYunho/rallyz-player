@@ -19,7 +19,8 @@ const eventSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
     start_time: z.string().regex(/^\d{2}:\d{2}$/, "Pick a start time"),
     end_time: z.string().regex(/^\d{2}:\d{2}$/, "Pick an end time"),
-    venue_name: z.string().trim().min(2, "Enter the venue").max(120),
+    venue_id: z.uuid().optional(),
+    venue_name: z.string().trim().max(120).optional(),
     area: z.enum(AREAS, "Pick an area"),
     address: z.string().trim().max(300).optional(),
     courts: z.coerce.number().int().min(1).max(50).optional(),
@@ -35,7 +36,11 @@ const eventSchema = z
     repeat_weeks: z.coerce.number().int().min(1).max(12).optional().default(1),
   })
   .refine((v) => v.level_max >= v.level_min, { message: "Highest level must be at or above the lowest", path: ["level_max"] })
-  .refine((v) => v.end_time > v.start_time, { message: "End time must be after the start time", path: ["end_time"] });
+  .refine((v) => v.end_time > v.start_time, { message: "End time must be after the start time", path: ["end_time"] })
+  .refine((v) => v.venue_id || (v.venue_name && v.venue_name.length >= 2), {
+    message: "Pick a venue from the list, or type the venue name",
+    path: ["venue_name"],
+  });
 
 function readEventForm(formData: FormData) {
   const get = (k: string) => {
@@ -49,6 +54,7 @@ function readEventForm(formData: FormData) {
     date: get("date"),
     start_time: get("start_time"),
     end_time: get("end_time"),
+    venue_id: get("venue_id"),
     venue_name: get("venue_name"),
     area: get("area"),
     address: get("address"),
@@ -66,7 +72,18 @@ function readEventForm(formData: FormData) {
   });
 }
 
-function toRow(v: z.infer<typeof eventSchema>, weekOffset: number) {
+type ResolvedVenue = { venue_id: string | null; venue_name: string; address: string | null };
+
+/** Uses the chosen venue from the main site's list, or the typed-in name. */
+async function resolveVenue(v: z.infer<typeof eventSchema>): Promise<ResolvedVenue | { error: string }> {
+  if (!v.venue_id) return { venue_id: null, venue_name: v.venue_name!, address: v.address ?? null };
+  const supabase = await createClient();
+  const { data } = await supabase.from("venues").select("id, name, address").eq("id", v.venue_id).eq("is_active", true).maybeSingle();
+  if (!data) return { error: "That venue isn't available. Pick another or type the name." };
+  return { venue_id: data.id, venue_name: data.name, address: v.address || data.address || null };
+}
+
+function toRow(v: z.infer<typeof eventSchema>, venue: ResolvedVenue, weekOffset: number) {
   const start = new Date(bangkokLocalToIso(`${v.date}T${v.start_time}`)!);
   const end = new Date(bangkokLocalToIso(`${v.date}T${v.end_time}`)!);
   const shift = weekOffset * 7 * 86400_000;
@@ -76,9 +93,10 @@ function toRow(v: z.infer<typeof eventSchema>, weekOffset: number) {
     format: v.format,
     starts_at: new Date(start.getTime() + shift).toISOString(),
     ends_at: new Date(end.getTime() + shift).toISOString(),
-    venue_name: v.venue_name,
+    venue_id: venue.venue_id,
+    venue_name: venue.venue_name,
     area: v.area,
-    address: v.address ?? null,
+    address: venue.address,
     courts: v.courts ?? null,
     level_min: v.level_min,
     level_max: v.level_max,
@@ -103,9 +121,12 @@ export async function createEvent(_prev: ActionState, formData: FormData): Promi
     return { error: "Pick a start time in the future." };
   }
 
+  const venue = await resolveVenue(v);
+  if ("error" in venue) return { error: venue.error };
+
   const seriesId = v.repeat_weeks > 1 ? crypto.randomUUID() : null;
   const rows = Array.from({ length: v.repeat_weeks }, (_, i) => ({
-    ...toRow(v, i),
+    ...toRow(v, venue, i),
     organizer_id: profile.id,
     series_id: seriesId,
   }));
@@ -134,10 +155,13 @@ export async function updateEvent(_prev: ActionState, formData: FormData): Promi
   const parsed = readEventForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
 
+  const venue = await resolveVenue(parsed.data);
+  if ("error" in venue) return { error: venue.error };
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
-    .update(toRow(parsed.data, 0))
+    .update(toRow(parsed.data, venue, 0))
     .eq("id", id.data)
     .eq("organizer_id", userId)
     .select("id");

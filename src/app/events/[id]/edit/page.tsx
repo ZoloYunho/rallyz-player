@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
-import { getEvent } from "@/lib/events";
+import { getEvent, listVenueOptions } from "@/lib/events";
 import { createClient } from "@/lib/supabase/server";
 import { isoToBangkokLocal, todayInBangkok } from "@/lib/time";
 import { Notice, PageHeader } from "@/components/ui";
@@ -18,7 +18,10 @@ export default async function EditEventPage(props: PageProps<"/events/[id]/edit"
   if (event.cancelled_at) redirect(`/events/${id}`);
 
   const supabase = await createClient();
-  const { data: note } = await supabase.from("event_private_notes").select("note").eq("event_id", id).maybeSingle();
+  const [{ data: note }, venues] = await Promise.all([
+    supabase.from("event_private_notes").select("note").eq("event_id", id).maybeSingle(),
+    listVenueOptions(),
+  ]);
   const start = isoToBangkokLocal(event.starts_at);
   const end = isoToBangkokLocal(event.ends_at);
 
@@ -36,6 +39,7 @@ export default async function EditEventPage(props: PageProps<"/events/[id]/edit"
       <EventForm
         mode="edit"
         minDate={todayInBangkok()}
+        venues={venues}
         values={{
           event_id: event.id,
           title: event.title,
@@ -44,6 +48,7 @@ export default async function EditEventPage(props: PageProps<"/events/[id]/edit"
           date: start.slice(0, 10),
           start_time: start.slice(11, 16),
           end_time: end.slice(11, 16),
+          venue_id: event.venue_id,
           venue_name: event.venue_name,
           area: event.area,
           address: event.address ?? "",
