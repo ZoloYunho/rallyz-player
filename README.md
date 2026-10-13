@@ -31,32 +31,62 @@ Built with Next.js 16 (App Router), Tailwind CSS 4 and Supabase (Postgres, Auth,
 
 `/partner` is a "coming soon" page for P2 (find a partner).
 
-## Set up
+## Set up (shared with the main rallyz.club Supabase project)
 
-### 1. Create a Supabase project
-Create a project at supabase.com. The Singapore region is closest to Bangkok.
+This app uses the **same Supabase project as rallyz.club** and deploys as its own Vercel project at `play.rallyz.club`. The main site links to it; it links back with **Courts** in its header.
 
-### 2. Create the database
-Run the three files in `supabase/migrations/` in order. Either:
-- paste each into the Supabase **SQL Editor** and run it, or
-- use the CLI: `npx supabase link --project-ref <ref>` then `npx supabase db push`.
+### 1. Check for name clashes (read-only)
+In the Supabase **SQL Editor**, run `supabase/preflight.sql`. It changes nothing; it lists any existing tables, types or functions with the names Rallyz would create.
+- **No rows:** safe to continue.
+- **Any rows** (most likely `profiles`): stop and send the list over, so the migrations can be adapted to reuse or sit alongside what's there.
 
-The third file schedules reminders with `pg_cron`. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
+### 2. Create the Rallyz tables
+Run the three files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
+- add new tables, types and functions only; Rallyz's own trigger and helper names start with `rallyz_`
+- change permissions only on Rallyz's own functions, never the main site's
+- give every existing account a Rallyz profile; people set their level the first time they open Rallyz
+- add one trigger on new sign-ups that creates a profile. It is fail-safe: if it ever errors, the sign-up still goes through and the profile is created on first visit.
 
-### 3. Turn on sign-in
-In Supabase, go to **Authentication**:
-- **URL Configuration:** set Site URL to `https://rallyz.club` (or your domain). Add these redirect URLs: `http://localhost:3000/auth/callback` and `https://rallyz.club/auth/callback`.
-- **Providers > Google:** enable it with a Google Cloud OAuth client. In Google Cloud, the authorized redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`.
-- **Email:** works out of the box for testing, but Supabase's built-in email is rate-limited. Add your own SMTP (Authentication > Emails) before launch.
+The third migration schedules reminders with `pg_cron`. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
 
-### 4. Run it
+### 3. Auth settings
+In Supabase **Authentication > URL Configuration**:
+- **Leave Site URL as it is** (the main site).
+- **Add redirect URLs:** `https://play.rallyz.club/auth/callback` and `http://localhost:3000/auth/callback`.
+
+Google sign-in uses the provider you already have; nothing changes in Google Cloud.
+
+### 4. Run locally
 ```bash
-cp .env.example .env.local   # fill in the Supabase URL and publishable key
+cp .env.example .env.local   # Supabase URL and publishable key; leave COOKIE_DOMAIN empty
 npm install
 npm run dev                  # http://localhost:3000
 ```
 
-### 5. Make yourself admin
+### 5. Deploy to play.rallyz.club
+1. In Vercel, create a **new project** from this repo.
+2. Add the domain `play.rallyz.club`, and the DNS record Vercel shows you.
+3. Set these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | same as the main site |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | same as the main site |
+| `NEXT_PUBLIC_SITE_URL` | `https://play.rallyz.club` |
+| `NEXT_PUBLIC_COOKIE_DOMAIN` | `.rallyz.club` |
+| `NEXT_PUBLIC_MAIN_SITE_URL` | `https://rallyz.club` |
+
+4. On the main site, point **Events**, **Instructors** and **Find partner** to `https://play.rallyz.club/events`, `/instructors` and `/partner`.
+
+### 6. One login for both sites
+Both sites read the same Supabase sign-in cookie only if both write it for `.rallyz.club`. This app does that via `NEXT_PUBLIC_COOKIE_DOMAIN`. **The main site needs the same one-line change** wherever it creates its Supabase client (server, browser and middleware):
+```ts
+createServerClient(url, key, { cookieOptions: { domain: ".rallyz.club" }, cookies: { ... } })
+createBrowserClient(url, key, { cookieOptions: { domain: ".rallyz.club" } })
+```
+After that deploys, people already signed in on the main site sign in once more; from then on one sign-in covers both. Without this change everything still works, but players sign in separately on each site.
+
+### 7. Make yourself admin
 Sign in once, then in the SQL Editor:
 ```sql
 update public.profiles set is_admin = true
@@ -64,16 +94,8 @@ where id = (select id from auth.users where email = 'you@example.com');
 ```
 You'll see an **Admin** button on My page.
 
-### 6. Deploy
-Vercel works with no extra config. Set the same three environment variables, with `NEXT_PUBLIC_SITE_URL=https://rallyz.club`.
-
-## Fitting it into the existing rallyz.club
-
-Routes match your current navigation: `/events`, `/instructors`, `/partner`, plus `/auth/login`. You can:
-- deploy this as the site and move the court search and venue pages into it, or
-- copy `src/app/events`, `src/app/instructors`, `src/app/chat`, `src/lib` and `src/components` into your existing Next.js app, using the same Supabase project.
-
-The colours live in `src/app/globals.css` (`--color-court`, `--color-ball`). Change them to match your current brand.
+### Later: move under rallyz.club
+When the sprint proves out, serve these pages from `rallyz.club/events` either with Vercel rewrites from the main project to this one (Next.js multi-zones) or by merging the code. The database stays as is.
 
 ## How it's built
 
@@ -89,7 +111,7 @@ src/components/        shared UI
 **Security model.** Every table has row-level security. Anything that changes participation, waitlist order, counters, payments, instructor approval or badges goes through Postgres functions that check who is calling. The browser can't write those columns directly. PromptPay numbers and meeting-point notes are visible only to the organizer and confirmed players.
 
 **Checks run before handover:**
-- `npm run test:db` covers about 60 flows: joining, waitlist promotion, approvals, late cancellation, payments, private notes, chat privacy, instructor review, lesson requests, reminders, admin rights, and attempts to bypass each rule
+- `npm run test:db` covers about 65 flows, including shared-project safety (existing users get profiles, the main site's functions keep working, sign-up can't be blocked), plus: joining, waitlist promotion, approvals, late cancellation, payments, private notes, chat privacy, instructor review, lesson requests, reminders, admin rights, and attempts to bypass each rule
 - `npm run typecheck`, `npm run lint` and `npm run build` all pass
 - the PromptPay QR payload matches the widely used `promptpay-qr` library byte for byte
 - the public pages were rendered in Chromium on desktop and phone sizes

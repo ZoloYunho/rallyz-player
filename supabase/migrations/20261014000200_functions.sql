@@ -84,7 +84,7 @@ end;
 $$;
 
 -- Every new event gets a group chat with the organizer in it.
-create function public.handle_new_event() returns trigger
+create function public.rallyz_handle_new_event() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   v_conv uuid;
@@ -98,11 +98,11 @@ $$;
 
 create trigger on_event_created
   after insert on public.events
-  for each row execute function public.handle_new_event();
+  for each row execute function public.rallyz_handle_new_event();
 
 -- When an organizer raises capacity or switches to instant entry, waitlisted
 -- players move up. Lowering capacity never removes confirmed players.
-create function public.handle_event_updated() returns trigger
+create function public.rallyz_handle_event_updated() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if new.capacity > old.capacity then
@@ -114,7 +114,26 @@ $$;
 
 create trigger on_event_updated
   after update of capacity on public.events
-  for each row execute function public.handle_event_updated();
+  for each row execute function public.rallyz_handle_event_updated();
+
+-- Creates the caller's profile if it is missing (e.g. the sign-up trigger
+-- failed). Safe to call any time.
+create function public.rallyz_ensure_profile() returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    return;
+  end if;
+  insert into public.profiles (id, display_name, avatar_url)
+  select u.id,
+    left(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', split_part(coalesce(u.email, ''), '@', 1), ''), 60),
+    case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
+  from auth.users u where u.id = v_uid
+  on conflict (id) do nothing;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Joining and leaving events
@@ -464,7 +483,7 @@ $$;
 create function public.review_coach(p_user uuid, p_approve boolean, p_note text default null) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not public.is_admin() then
+  if not public.rallyz_is_admin() then
     raise exception 'Admins only' using errcode = '42501';
   end if;
   update public.coach_profiles
@@ -583,7 +602,7 @@ $$;
 create function public.admin_set_founding_organizer(p_user uuid, p_value boolean) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not public.is_admin() then
+  if not public.rallyz_is_admin() then
     raise exception 'Admins only' using errcode = '42501';
   end if;
   update public.profiles set is_founding_organizer = p_value where id = p_user;
@@ -635,7 +654,7 @@ returns table (week_start date, new_players bigint, events_posted bigint, joins 
                lesson_requests bigint, messages_sent bigint)
 language plpgsql stable security definer set search_path = public as $$
 begin
-  if not public.is_admin() then
+  if not public.rallyz_is_admin() then
     raise exception 'Admins only' using errcode = '42501';
   end if;
   return query
@@ -658,11 +677,42 @@ $$;
 -- Who may call what
 -- ---------------------------------------------------------------------------
 
-revoke execute on all functions in schema public from public, anon, authenticated;
+-- Only Rallyz's own functions: the project also serves the main site,
+-- so never change permissions on functions we didn't create.
+revoke execute on function public.rallyz_handle_new_user() from public, anon, authenticated;
+revoke execute on function public.rallyz_is_admin(uuid) from public, anon, authenticated;
+revoke execute on function public.is_conversation_member(uuid, uuid) from public, anon, authenticated;
+revoke execute on function public.rallyz_touch_conversation() from public, anon, authenticated;
+revoke execute on function public.coach_profile_touch() from public, anon, authenticated;
+revoke execute on function public._notify(uuid, text, text, uuid, uuid, text) from public, anon, authenticated;
+revoke execute on function public._display_name(uuid) from public, anon, authenticated;
+revoke execute on function public._recount(uuid) from public, anon, authenticated;
+revoke execute on function public._sync_event_chat(uuid, uuid, boolean) from public, anon, authenticated;
+revoke execute on function public._promote_waitlist(uuid) from public, anon, authenticated;
+revoke execute on function public.rallyz_handle_new_event() from public, anon, authenticated;
+revoke execute on function public.rallyz_handle_event_updated() from public, anon, authenticated;
+revoke execute on function public.join_event(uuid) from public, anon, authenticated;
+revoke execute on function public.leave_event(uuid) from public, anon, authenticated;
+revoke execute on function public.decide_participant(uuid, uuid, boolean) from public, anon, authenticated;
+revoke execute on function public.cancel_event(uuid, text) from public, anon, authenticated;
+revoke execute on function public.get_roster(uuid) from public, anon, authenticated;
+revoke execute on function public.set_payment_status(uuid, uuid, public.payment_status) from public, anon, authenticated;
+revoke execute on function public.get_payment_info(uuid) from public, anon, authenticated;
+revoke execute on function public.get_or_create_direct(uuid) from public, anon, authenticated;
+revoke execute on function public.my_conversations() from public, anon, authenticated;
+revoke execute on function public.review_coach(uuid, boolean, text) from public, anon, authenticated;
+revoke execute on function public.request_lesson(uuid, public.lesson_kind, smallint, timestamptz, text) from public, anon, authenticated;
+revoke execute on function public.respond_lesson_request(uuid, boolean) from public, anon, authenticated;
+revoke execute on function public.cancel_lesson_request(uuid) from public, anon, authenticated;
+revoke execute on function public.admin_set_founding_organizer(uuid, boolean) from public, anon, authenticated;
+revoke execute on function public.send_event_reminders() from public, anon, authenticated;
+revoke execute on function public.admin_weekly_metrics(integer) from public, anon, authenticated;
+revoke execute on function public.rallyz_ensure_profile() from public, anon, authenticated;
 
-grant execute on function public.is_admin(uuid) to anon, authenticated;
+grant execute on function public.rallyz_is_admin(uuid) to anon, authenticated;
 grant execute on function public.is_conversation_member(uuid, uuid) to authenticated;
 grant execute on function public.get_roster(uuid) to anon, authenticated;
+grant execute on function public.rallyz_ensure_profile() to authenticated;
 grant execute on function public.join_event(uuid) to authenticated;
 grant execute on function public.leave_event(uuid) to authenticated;
 grant execute on function public.decide_participant(uuid, uuid, boolean) to authenticated;

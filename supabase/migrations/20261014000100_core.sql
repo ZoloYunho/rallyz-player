@@ -56,24 +56,40 @@ revoke insert, update, delete on public.profiles from anon, authenticated;
 grant update (display_name, avatar_url, level, areas, bio, onboarded) on public.profiles to authenticated;
 
 -- Create a profile row for every new auth user.
-create function public.handle_new_user() returns trigger
+create function public.rallyz_handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, display_name, avatar_url)
   values (
     new.id,
     left(coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(coalesce(new.email, ''), '@', 1), ''), 60),
-    new.raw_user_meta_data ->> 'avatar_url'
-  );
+    case when (new.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(new.raw_user_meta_data ->> 'avatar_url', 500) end
+  )
+  on conflict (id) do nothing;
+  return new;
+exception when others then
+  -- Never block a sign-up on the main site because of Rallyz. The profile is
+  -- created later by the backfill or on first visit to onboarding.
+  raise warning 'rallyz_handle_new_user failed for %: %', new.id, sqlerrm;
   return new;
 end;
 $$;
 
-create trigger on_auth_user_created
+create trigger rallyz_on_auth_user_created
   after insert on auth.users
-  for each row execute function public.handle_new_user();
+  for each row execute function public.rallyz_handle_new_user();
 
-create function public.is_admin(uid uuid default auth.uid()) returns boolean
+-- People who signed up on the main site before Rallyz existed get a profile
+-- too (they set their level in onboarding the first time they visit).
+insert into public.profiles (id, display_name, avatar_url)
+select
+  u.id,
+  left(coalesce(u.raw_user_meta_data ->> 'full_name', u.raw_user_meta_data ->> 'name', split_part(coalesce(u.email, ''), '@', 1), ''), 60),
+  case when (u.raw_user_meta_data ->> 'avatar_url') ~ '^https://' then left(u.raw_user_meta_data ->> 'avatar_url', 500) end
+from auth.users u
+on conflict (id) do nothing;
+
+create function public.rallyz_is_admin(uid uuid default auth.uid()) returns boolean
 language sql stable security definer set search_path = public as $$
   select coalesce((select is_admin from public.profiles where id = uid), false);
 $$;
@@ -285,7 +301,7 @@ grant update (last_read_at) on public.conversation_members to authenticated;
 revoke insert, update, delete on public.messages from authenticated;
 grant insert (conversation_id, body) on public.messages to authenticated;
 
-create function public.touch_conversation() returns trigger
+create function public.rallyz_touch_conversation() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   update public.conversations set last_message_at = new.created_at where id = new.conversation_id;
@@ -297,7 +313,7 @@ $$;
 
 create trigger on_message_sent
   after insert on public.messages
-  for each row execute function public.touch_conversation();
+  for each row execute function public.rallyz_touch_conversation();
 
 -- ---------------------------------------------------------------------------
 -- Notifications
@@ -359,7 +375,7 @@ create index coach_profiles_status_idx on public.coach_profiles (status);
 alter table public.coach_profiles enable row level security;
 
 create policy "approved instructors are public" on public.coach_profiles
-  for select using (status = 'approved' or user_id = auth.uid() or public.is_admin());
+  for select using (status = 'approved' or user_id = auth.uid() or public.rallyz_is_admin());
 create policy "users create their instructor profile" on public.coach_profiles
   for insert to authenticated with check (user_id = auth.uid());
 create policy "users edit their instructor profile" on public.coach_profiles
@@ -378,7 +394,7 @@ create function public.coach_profile_touch() returns trigger
 language plpgsql set search_path = public as $$
 begin
   new.updated_at := now();
-  if old.status = 'rejected' and new.status = 'rejected' and not public.is_admin() then
+  if old.status = 'rejected' and new.status = 'rejected' and not public.rallyz_is_admin() then
     new.status := 'pending';
     new.review_note := null;
   end if;

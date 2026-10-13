@@ -4,7 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import Link from "next/link";
 import { Suspense } from "react";
 import { HeaderUser } from "@/components/header-user";
-import { siteUrl } from "@/lib/supabase/env";
+import { mainSiteUrl, siteUrl } from "@/lib/supabase/env";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#1f5135" };
 
 const nav = [
+  { href: mainSiteUrl(), label: "Courts" },
   { href: "/events", label: "Events" },
   { href: "/instructors", label: "Instructors" },
   { href: "/partner", label: "Find partner" },

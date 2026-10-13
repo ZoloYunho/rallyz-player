@@ -25,9 +25,43 @@ await db.exec(`
   create publication supabase_realtime;
 `);
 
+// The main site's existing objects: a user who signed up before Rallyz, and
+// one of the main site's own functions that must keep working.
+const EXISTING = '00000000-0000-0000-0000-0000000000ee';
+await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'old@x.com', '{"name":"Old Member","avatar_url":"http://insecure/a.png"}')`, [EXISTING]);
+await db.exec(`create function public.main_site_search_courts() returns int language sql as $$ select 42 $$;
+  grant execute on function public.main_site_search_courts() to authenticated;`);
+
 await db.exec(readFileSync(MIG + '20261014000100_core.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000200_functions.sql', 'utf8'));
 console.log('migrations applied');
+
+// --- shared-project safety
+{
+  const [p] = (await db.query(`select display_name, avatar_url from public.profiles where id = $1`, [EXISTING])).rows;
+  assert.equal(p.display_name, 'Old Member'); assert.equal(p.avatar_url, null);
+  console.log('  ok: existing main-site user got a profile (unsafe avatar dropped)');
+  await db.exec(`reset role`);
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [EXISTING]);
+  await db.exec(`set role authenticated`);
+  assert.equal((await db.query(`select public.main_site_search_courts() n`)).rows[0].n, 42);
+  console.log("  ok: main site's own functions still callable");
+  await db.query(`select public.rallyz_ensure_profile()`);
+  console.log('  ok: ensure_profile is a no-op when the profile exists');
+  await db.exec(`reset role`);
+  // Sign-up must never fail because of Rallyz, even with an oversized name.
+  await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000e1', 'x@x.com', $1)`,
+    [JSON.stringify({ full_name: 'x'.repeat(500) })]);
+  console.log('  ok: sign-up succeeds and profile name is trimmed');
+  // A missing profile is recreated on demand.
+  await db.query(`delete from public.profiles where id = '00000000-0000-0000-0000-0000000000e1'`);
+  await db.query(`select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000e1', false)`);
+  await db.exec(`set role authenticated`);
+  await db.query(`select public.rallyz_ensure_profile()`);
+  assert.equal((await db.query(`select count(*)::int n from public.profiles where id = '00000000-0000-0000-0000-0000000000e1'`)).rows[0].n, 1);
+  await db.exec(`reset role`);
+  console.log('  ok: missing profile recreated by ensure_profile');
+}
 
 const U = {
   A: '00000000-0000-0000-0000-00000000000a',

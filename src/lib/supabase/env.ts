@@ -16,3 +16,16 @@ export function supabaseKey(): string {
 export function siteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
+
+/**
+ * Set to ".rallyz.club" in production so the sign-in cookie is shared with the
+ * main site (same Supabase project). Leave unset on localhost.
+ */
+export function cookieDomain(): string | undefined {
+  return process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
+}
+
+/** The main rallyz.club site (court search), linked from the header. */
+export function mainSiteUrl(): string {
+  return (process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://rallyz.club").replace(/\/$/, "");
+}
