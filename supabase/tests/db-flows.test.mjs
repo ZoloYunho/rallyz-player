@@ -19,9 +19,6 @@ await db.exec(`
   grant usage on schema auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
   grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-  alter default privileges in schema public grant execute on functions to anon, authenticated;
   create publication supabase_realtime;
 `);
 
@@ -43,6 +40,7 @@ await db.exec(`
   create table public.venues (id uuid primary key default gen_random_uuid(), name text not null, district text not null,
     address text not null default '', google_maps_url text, photos text[], is_active boolean default true, sports text[] not null default '{}');
   alter table public.venues enable row level security;
+  grant select on public.venues to anon, authenticated; grant select on public.profiles to anon, authenticated;
   create policy venues_public_read on public.venues for select using (true);
 `);
 await db.query(`insert into public.profiles (id, full_name, phone) values ($1, 'Somchai Old-Member', '0811111111')`, [EXISTING]);
@@ -53,6 +51,7 @@ await db.exec(readFileSync(MIG + '20261014000200_functions.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000400_partner_enum.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000500_partner.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000600_profile_privacy.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000700_grants.sql', 'utf8'));
 console.log('migrations applied');
 
 // --- shared-project safety
@@ -165,7 +164,7 @@ ok('leaving promotes the waitlist');
 await as(null);
 const roster = await q(`select display_name, status from get_roster($1)`, [E1]);
 assert.deepEqual(roster.map(r => r.display_name).sort(), ['User C', 'User D']); ok('public roster for anon');
-assert.equal((await q(`select count(*)::int n from event_participants`))[0].n, 0); ok('anon sees no entries');
+await fails('anon cannot read entries', `select count(*) from event_participants`, [], /permission denied/);
 
 // --- chat membership follows status
 await as(U.C);

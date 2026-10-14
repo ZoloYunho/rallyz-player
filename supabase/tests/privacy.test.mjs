@@ -28,22 +28,21 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant usage on schema auth to anon, authenticated; grant execute on function auth.uid() to anon, authenticated;
   grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-  alter default privileges in schema public grant execute on functions to anon, authenticated;
   create publication supabase_realtime;
   create table public.profiles (id uuid primary key, full_name text, phone text);
   alter table public.profiles enable row level security;
   create table public.venues (id uuid primary key default gen_random_uuid(), name text not null, district text not null,
     address text not null default '', google_maps_url text, photos text[], is_active boolean default true, sports text[] not null default '{}');
   alter table public.venues enable row level security;
+  grant select on public.venues to anon, authenticated; grant select on public.profiles to anon, authenticated;
 `);
 for (const f of ['20261014000100_core.sql', '20261014000200_functions.sql', '20261014000400_partner_enum.sql',
-                 '20261014000500_partner.sql', '20261014000600_profile_privacy.sql']) {
+                 '20261014000500_partner.sql', '20261014000600_profile_privacy.sql', '20261014000700_grants.sql']) {
   await db.exec(readFileSync(MIG + f, 'utf8'));
 }
 // Running it twice must be safe.
 await db.exec(readFileSync(MIG + '20261014000600_profile_privacy.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000700_grants.sql', 'utf8'));
 ok('privacy migration applies and re-runs');
 
 const id = (n) => `00000000-0000-0000-0000-0000000000${String(n).padStart(2, '0')}`;
@@ -104,6 +103,15 @@ await db.exec('reset role');
 await as(U.viewer);
 const r = await q(`select count(*)::int n from information_schema.routines where routine_schema = 'public' and routine_name = 'profile_visible'`);
 assert.equal(r[0].n, 0); ok('profile_visible is not in the public (API) schema');
+await db.exec('reset role');
+
+// Logged-out pages: the home page / events list query and the instructor list.
+await as(null);
+const evs = await q(`select e.title, o.display_name, o.level from events e
+  left join player_profiles o on o.id = e.organizer_id where e.cancelled_at is null`);
+assert.equal(evs[0].display_name, 'org'); ok('anon can list events with organizer names (home page)');
+const coaches = await q(`select c.headline from coach_profiles c`);
+assert.equal(coaches.length, 1); ok('anon sees approved instructors only');
 await db.exec('reset role');
 
 console.log('\nALL PRIVACY TESTS PASSED');
