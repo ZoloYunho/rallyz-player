@@ -47,7 +47,7 @@ export default async function PartnerPage(props: PageProps<"/partner">) {
         action={<ButtonLink href="/partner/new" variant="accent">Post a game</ButtonLink>}
       />
 
-      <form className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-line bg-white p-3 sm:grid-cols-5">
+      <form className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-line bg-white p-3 sm:grid-cols-5">
         <input type="date" name="day" defaultValue={filters.day} min={todayInBangkok()} className={field} aria-label="Date" />
         <select name="area" defaultValue={filters.area ?? ""} className={field} aria-label="Area">
           <option value="">All areas</option>

@@ -23,15 +23,15 @@ export default async function Image({ params }: { params: Promise<{ id: string }
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#1f5135", color: "white", padding: 64, fontFamily: "sans-serif" }}>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#0f6e56", color: "white", padding: 64, fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 36, fontWeight: 800 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 999, background: "#d4f24a" }} />
+          <div style={{ width: 36, height: 36, borderRadius: 999, background: "#c9f0df" }} />
           Rallyz
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div style={{ fontSize: title.length > 40 ? 60 : 76, fontWeight: 800, lineHeight: 1.05 }}>{title}</div>
           {e ? (
-            <div style={{ display: "flex", fontSize: 34, color: "#ecfab0" }}>
+            <div style={{ display: "flex", fontSize: 34, color: "#f0fbf5" }}>
               {formatDay(e.starts_at)} · {formatTimeRange(e.starts_at, e.ends_at)} · {e.area}
             </div>
           ) : null}
@@ -39,7 +39,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         {e ? (
           <div style={{ display: "flex", gap: 16, fontSize: 30, fontWeight: 700 }}>
             {[levelRange(e.level_min, e.level_max), baht(e.fee_thb), spots].map((t) => (
-              <div key={t} style={{ display: "flex", background: t === spots ? "#d4f24a" : "rgba(255,255,255,0.12)", color: t === spots ? "#13261c" : "white", padding: "12px 24px", borderRadius: 999 }}>
+              <div key={t} style={{ display: "flex", background: t === spots ? "#c9f0df" : "rgba(255,255,255,0.12)", color: t === spots ? "#0b5a46" : "white", padding: "12px 24px", borderRadius: 999 }}>
                 {t}
               </div>
             ))}

@@ -86,7 +86,7 @@ export function ChatRoom({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-white">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-white">
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
         {messages.length === 0 ? <p className="py-10 text-center text-sm text-muted">Say hello 👋</p> : null}
         {messages.map((m, i) => {
@@ -99,7 +99,7 @@ export function ChatRoom({
               {showDay ? <p className="my-3 text-center text-xs text-muted">{day}</p> : null}
               <div className={cx("flex items-end gap-2", mine && "flex-row-reverse")}>
                 {!mine ? <Avatar name={sender?.name ?? "Player"} url={sender?.avatarUrl} size={28} /> : null}
-                <div className={cx("max-w-[78%] rounded-2xl px-3 py-2", mine ? "bg-court text-white" : "bg-paper")}>
+                <div className={cx("max-w-[78%] rounded-xl px-3 py-2", mine ? "bg-court text-white" : "bg-paper")}>
                   {!mine && members.length > 2 ? <p className="text-xs font-semibold text-court">{sender?.name ?? "Player"}</p> : null}
                   <p className="text-sm break-words whitespace-pre-line">{m.body}</p>
                   <p className={cx("mt-0.5 text-[10px]", mine ? "text-white/70" : "text-muted")}>

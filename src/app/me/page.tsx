@@ -177,7 +177,7 @@ export default async function MePage(props: PageProps<"/me">) {
         {lessonRows.length === 0 ? (
           <EmptyState title="No lesson requests" />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
             {lessonRows.map((l) => {
               const iAmCoach = l.coach_id === me.id;
               const other = iAmCoach ? l.player : l.coach;
@@ -241,7 +241,7 @@ export default async function MePage(props: PageProps<"/me">) {
       {(blockedPeople ?? []).length ? (
         <section>
           <h2 className="mb-3 text-lg font-semibold">Blocked players</h2>
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
             {((blockedPeople ?? []) as PublicProfile[]).map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">

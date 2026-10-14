@@ -35,7 +35,7 @@ export default async function EventsPage(props: PageProps<"/events">) {
         action={<ButtonLink href="/events/new" variant="accent">Host an event</ButtonLink>}
       />
 
-      <form className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-line bg-white p-3 sm:grid-cols-3 lg:grid-cols-6">
+      <form className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-line bg-white p-3 sm:grid-cols-3 lg:grid-cols-6">
         <input type="date" name="day" defaultValue={filters.day} min={todayInBangkok()} className={field} aria-label="Date" />
         <select name="area" defaultValue={filters.area ?? ""} className={field} aria-label="Area">
           <option value="">All areas</option>

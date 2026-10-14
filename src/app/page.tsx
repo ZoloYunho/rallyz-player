@@ -15,7 +15,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-14">
-      <section className="overflow-hidden rounded-3xl bg-court px-6 py-12 text-white sm:px-12 sm:py-16">
+      <section className="overflow-hidden rounded-xl bg-court px-6 py-12 text-white sm:px-12 sm:py-16">
         <p className="text-sm font-semibold tracking-wide text-ball uppercase">Tennis in Bangkok</p>
         <h1 className="mt-3 max-w-2xl text-4xl leading-tight font-extrabold tracking-tight sm:text-5xl">
           Find a game at your level. Tonight.
@@ -41,7 +41,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="rounded-3xl border border-line bg-white p-6 sm:p-10">
+      <section className="rounded-xl border border-line bg-white p-6 sm:p-10">
         <h2 className="text-xl font-bold">Run sessions in a Facebook group? Rallyz does the admin.</h2>
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {ORGANIZER_POINTS.map((p) => (

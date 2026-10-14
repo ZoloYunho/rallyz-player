@@ -9,7 +9,7 @@ export async function PromptPayQr({ promptpayId, amount }: { promptpayId: string
       type: "svg",
       margin: 1,
       errorCorrectionLevel: "M",
-      color: { dark: "#13261c", light: "#ffffff" },
+      color: { dark: "#111111", light: "#ffffff" },
     });
   } catch {
     return null;

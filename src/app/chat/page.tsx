@@ -22,7 +22,7 @@ export default async function InboxPage(props: PageProps<"/chat">) {
       {rows.length === 0 ? (
         <EmptyState title="No messages yet">Join an event to get its group chat, or message an organizer from their event.</EmptyState>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
           {rows.map((r) => (
             <li key={r.conversation_id}>
               <Link href={`/chat/${r.conversation_id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-court-50">

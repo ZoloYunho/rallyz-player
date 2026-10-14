@@ -41,7 +41,7 @@ export default async function NotificationsPage() {
       {rows.length === 0 ? (
         <EmptyState title="Nothing yet">You&apos;ll hear here when players join your events, spots open up, and more.</EmptyState>
       ) : (
-        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
           {rows.map((n) => {
             const inner = (
               <div className={cx("flex gap-3 px-4 py-3", !n.read_at && "bg-court-50/60")}>

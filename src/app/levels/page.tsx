@@ -16,7 +16,7 @@ export default function LevelsPage() {
       />
       <ol className="space-y-3">
         {LEVELS.map((l) => (
-          <li key={l.level} className="flex gap-4 rounded-2xl border border-line bg-white p-4">
+          <li key={l.level} className="flex gap-4 rounded-xl border border-line bg-white p-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-court font-mono text-lg font-bold text-ball">
               {l.level}
             </span>

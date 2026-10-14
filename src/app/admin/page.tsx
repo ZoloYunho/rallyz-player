@@ -187,7 +187,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Weekly numbers</h2>
-        <div className="overflow-x-auto rounded-2xl border border-line bg-white">
+        <div className="overflow-x-auto rounded-xl border border-line bg-white">
           <table className="w-full text-sm">
             <thead className="bg-paper text-left text-xs text-muted">
               <tr>
@@ -221,7 +221,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
         {organizers.length === 0 ? (
           <EmptyState title="No events yet" />
         ) : (
-          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-white">
             {organizers.map(({ profile, n }) => (
               <li key={profile.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">

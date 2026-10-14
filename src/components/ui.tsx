@@ -7,10 +7,10 @@ export function cx(...classes: (string | false | null | undefined)[]) {
 }
 
 export const btn = {
-  base: "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+  base: "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
   primary: "bg-court text-white hover:bg-court-600",
-  accent: "bg-ball text-ink hover:brightness-95",
-  secondary: "border border-line bg-white text-ink hover:border-court",
+  accent: "bg-court text-white hover:bg-court-600",
+  secondary: "border border-court bg-white text-court hover:bg-court-50",
   ghost: "text-court hover:bg-court-50",
   danger: "border border-danger/30 bg-white text-danger hover:bg-danger/5",
 };
@@ -24,12 +24,12 @@ export function ButtonLink({
 }
 
 export const field =
-  "w-full rounded-xl border border-line bg-white px-3 py-2 text-ink placeholder:text-muted/70 focus:border-court focus:outline-none";
+  "w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-ink placeholder:text-muted focus:border-court focus:bg-white focus:outline-none";
 export const label = "mb-1 block text-sm font-medium text-ink";
 export const hint = "mt-1 text-xs text-muted";
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx("rounded-2xl border border-line bg-white p-5", className)}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-white p-5", className)}>{children}</div>;
 }
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: ReactNode; action?: ReactNode }) {
@@ -56,7 +56,7 @@ export function Badge({
   const tones = {
     neutral: "bg-paper text-ink border-line",
     court: "bg-court-50 text-court border-court/20",
-    ball: "bg-ball-200 text-ink border-ball",
+    ball: "bg-court-50 text-court-600 border-court/30 font-semibold",
     warn: "bg-warn/10 text-warn border-warn/20",
     danger: "bg-danger/10 text-danger border-danger/20",
   };
@@ -136,7 +136,7 @@ export function FoundingBadge() {
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line bg-white/60 px-6 py-12 text-center">
+    <div className="rounded-xl border border-dashed border-line bg-white/60 px-6 py-12 text-center">
       <p className="font-semibold">{title}</p>
       {children ? <div className="mt-2 text-sm text-muted">{children}</div> : null}
     </div>

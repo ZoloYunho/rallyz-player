@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
-/* Rallyz palette: court green ink, ball-lime accent, warm neutral paper. */
+/* Matches the main rallyz.club site: green #0F6E56, off-white fields,
+   hairline grey borders, near-black text. */
 @theme {
-  --color-ink: #13261c;
-  --color-court: #1f5135;
-  --color-court-600: #1a4630;
-  --color-court-50: #eef5f0;
-  --color-ball: #d4f24a;
-  --color-ball-200: #ecfab0;
-  --color-paper: #f7f6f1;
-  --color-line: #e3e1d8;
-  --color-muted: #6b7068;
+  --color-ink: #111111;
+  --color-court: #0f6e56;
+  --color-court-600: #0b5a46;
+  --color-court-50: #f0fbf5;
+  --color-ball: #c9f0df; /* light mint accent (on green) */
+  --color-ball-200: #f0fbf5;
+  --color-paper: #f9f9f7;
+  --color-line: #e0e0dc;
+  --color-line-strong: #d0d0cc; /* form fields */
+  --color-muted: #767676; /* main site uses #888; this is the closest grey that stays readable */
   --color-danger: #b42318;
   --color-warn: #b54708;
 
@@ -38,3 +40,9 @@ select,
 textarea {
   font-size: 16px; /* stops iOS zooming into fields */
 }
+
+/* The main site draws every border as a 0.5px hairline. Plain (unlayered)
+   CSS wins over Tailwind's utility layer, so this overrides its 1px default. */
+.border { border-width: 0.5px; }
+.border-b { border-bottom-width: 0.5px; }
+.border-t { border-top-width: 0.5px; }

@@ -19,7 +19,7 @@ export function PostRow({ post, ask, mine }: { post: PlayRequest; ask?: PlayAsk;
   return (
     <Link
       href={`/partner/${post.id}`}
-      className="grid grid-cols-[3rem_1fr] gap-3 rounded-2xl border border-line bg-white p-4 transition hover:border-court sm:grid-cols-[3rem_1fr_auto]"
+      className="grid grid-cols-[3rem_1fr] gap-3 rounded-xl border border-line bg-white p-4 transition hover:border-court sm:grid-cols-[3rem_1fr_auto]"
     >
       <Avatar name={name} url={post.author?.avatar_url} size={48} />
       <div className="min-w-0">

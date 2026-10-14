@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Find tennis games, instructors and players at your level in Bangkok.",
 };
 
-export const viewport: Viewport = { themeColor: "#1f5135" };
+export const viewport: Viewport = { themeColor: "#0f6e56" };
 
 const nav = [
   { href: mainSiteUrl(), label: "Courts" },
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${GeistSans.variable} ${GeistMono.variable} min-h-dvh antialiased`}>
-        <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-line bg-white">
           <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
             <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
               <span aria-hidden className="inline-block h-4 w-4 rounded-full bg-ball ring-2 ring-court" />

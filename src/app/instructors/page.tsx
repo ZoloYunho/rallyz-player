@@ -25,7 +25,7 @@ export default async function InstructorsPage(props: PageProps<"/instructors">) 
         action={<ButtonLink href="/instructors/apply" variant="secondary">I&apos;m a coach</ButtonLink>}
       />
 
-      <form className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-line bg-white p-3 sm:grid-cols-5">
+      <form className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-line bg-white p-3 sm:grid-cols-5">
         <select name="area" defaultValue={filters.area ?? ""} className={field} aria-label="Area">
           <option value="">All areas</option>
           {AREAS.map((a) => <option key={a}>{a}</option>)}
@@ -52,7 +52,7 @@ export default async function InstructorsPage(props: PageProps<"/instructors">) 
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {coaches.map((c) => (
-            <Link key={c.user_id} href={`/instructors/${c.user_id}`} className="flex flex-col rounded-2xl border border-line bg-white p-4 transition hover:border-court">
+            <Link key={c.user_id} href={`/instructors/${c.user_id}`} className="flex flex-col rounded-xl border border-line bg-white p-4 transition hover:border-court">
               <div className="flex items-center gap-3">
                 <Avatar name={c.profile?.display_name ?? "Coach"} url={c.profile?.avatar_url} size={48} />
                 <div className="min-w-0">
