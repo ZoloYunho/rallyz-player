@@ -7,6 +7,7 @@ import { formatDay, formatTime } from "@/lib/time";
 import type { LessonRequest, Message } from "@/lib/types";
 import { SubmitButton } from "@/components/form";
 import { Badge } from "@/components/ui";
+import { SafetyMenu } from "@/components/safety-menu";
 import { cancelLesson, respondLesson } from "@/app/instructors/actions";
 import { ChatRoom, type Member } from "./chat-room";
 
@@ -20,7 +21,7 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
   const supabase = await createClient();
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, kind, event_id, event:events(id, title, starts_at)")
+    .select("id, kind, event_id, play_request_id, event:events(id, title, starts_at)")
     .eq("id", id)
     .maybeSingle();
   if (!conv) notFound(); // not a member, or doesn't exist
@@ -42,7 +43,9 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
   const messages = ((messageRows ?? []) as Message[]).reverse();
   const event = (conv as unknown as { event: { id: string; title: string; starts_at: string } | null }).event;
   const other = members.find((m) => m.id !== me.id);
-  const title = conv.kind === "event" ? event?.title ?? "Event chat" : other?.name ?? "Conversation";
+  const title =
+    conv.kind === "event" ? event?.title ?? "Event chat" : conv.kind === "match" ? "Match chat" : other?.name ?? "Conversation";
+  const playRequestId = (conv as unknown as { play_request_id: string | null }).play_request_id;
   const lessons = (lessonRows ?? []) as LessonRequest[];
 
   return (
@@ -51,6 +54,11 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
         <div className="min-w-0">
           <Link href="/chat" className="text-sm text-muted hover:text-court">← Messages</Link>
           <h1 className="truncate text-xl font-bold">{title}</h1>
+          {conv.kind === "match" && playRequestId ? (
+            <p className="text-sm text-muted">
+              {members.map((m) => m.name).join(", ")} · <Link href={`/partner/${playRequestId}`} className="text-court underline">Game post</Link>
+            </p>
+          ) : null}
           {conv.kind === "event" && event ? (
             <p className="text-sm text-muted">
               {formatDay(event.starts_at)} · <Link href={`/events/${event.id}`} className="text-court underline">Event page</Link> ·{" "}
@@ -96,6 +104,24 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
       })}
 
       <ChatRoom conversationId={id} meId={me.id} members={members} initialMessages={messages} />
+
+      {conv.kind === "direct" && other ? (
+        <div className="mt-3">
+          <SafetyMenu userId={other.id} name={other.name} back="/chat" />
+        </div>
+      ) : members.length > 1 ? (
+        <details className="mt-3 rounded-xl border border-line bg-white px-4 py-2 text-sm">
+          <summary className="cursor-pointer text-muted">Report or block someone in this chat</summary>
+          <div className="space-y-2 py-3">
+            {members
+              .filter((m) => m.id !== me.id)
+              .slice(0, 60)
+              .map((m) => (
+                <SafetyMenu key={m.id} userId={m.id} name={m.name} back={`/chat/${id}`} />
+              ))}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }

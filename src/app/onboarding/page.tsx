@@ -16,7 +16,7 @@ export default async function OnboardingPage(props: PageProps<"/onboarding">) {
     <div className="mx-auto max-w-3xl">
       <h1 className="text-3xl font-bold tracking-tight">Welcome to Rallyz</h1>
       <p className="mt-2 text-muted">
-        Three quick things so organizers and players know who they&apos;re playing with. You can change these any time.
+        A few quick things so organizers and players know who they&apos;re playing with. You can change these any time.
       </p>
       <OnboardingForm next={next} name={profile.display_name} areas={AREAS} />
     </div>

@@ -29,7 +29,13 @@ Built with Next.js 16 (App Router), Tailwind CSS 4 and Supabase (Postgres, Auth,
 - Event reminders 24 hours before start (hourly job)
 - Admin page (`/admin`): instructor reviews, weekly numbers (new players, events posted, joins, lesson requests, messages), most active organizers
 
-`/partner` is a "coming soon" page for P2 (find a partner).
+**P2: find a partner**
+- "Looking to play" posts (`/partner/new`): date and time window, area, court (from your venues, typed, or undecided), whether a court is booked, singles or doubles, players needed, level range, note
+- Feed (`/partner`) of open posts, showing posts that include your level by default, with filters for date, area, format and level; visible to signed-in players only
+- Ask to play: opens a direct chat with the author and posts the request there. The author accepts or declines; accepted players share a match chat. The post closes when enough players are in and reopens if someone drops out, and players turned away are told
+- Profiles gain usual play times and preferred formats (also asked, optionally, at onboarding)
+- Safety: tips to accept before the first post or ask (`/partner/safety`); report or block from any post or chat; blocking hides posts, stops direct messages, hides each other's messages in group chats, drops the blocked person from your matches and removes the chat from both inboxes; reports go to the admin page; limits on open posts, asks and re-asks
+- Signed-out visitors see only names, photos and levels, never play times or areas
 
 ## Set up (shared with the main rallyz.club Supabase project)
 
@@ -41,7 +47,7 @@ In the Supabase **SQL Editor**, run `supabase/preflight.sql`. It changes nothing
 - **Any rows** (most likely `profiles`): stop and send the list over, so the migrations can be adapted to reuse or sit alongside what's there.
 
 ### 2. Create the Rallyz tables
-Run the three files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
+Run the five files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
 - add new tables, types and functions only; Rallyz's own trigger and helper names start with `rallyz_`
 - keep players in a new `player_profiles` table (name, photo, level, areas). Your `profiles` table, with phone numbers, is never touched or exposed
 - link events to your existing `venues` table, which must exist before you run them
@@ -50,7 +56,7 @@ Run the three files in `supabase/migrations/` in order (SQL Editor, or `npx supa
 - give every existing account a player profile, named from `profiles.full_name`; people set their level the first time they open Rallyz
 - add one trigger on new sign-ups that creates a profile. It is fail-safe: if it ever errors, the sign-up still goes through and the profile is created on first visit.
 
-The third migration schedules reminders with `pg_cron`. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
+The third migration schedules reminders with `pg_cron`. The fourth adds a chat type on its own because Postgres needs that committed before the fifth uses it; run them as separate queries in the SQL Editor. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
 
 ### 3. Auth settings
 In Supabase **Authentication > URL Configuration**:
@@ -106,7 +112,7 @@ When the sprint proves out, serve these pages from `rallyz.club/events` either w
 
 ```
 supabase/migrations/   schema, row-level security, server functions
-supabase/tests/        Rallyz flow tests (npm run test:db) and main-site fix tests (npm run test:fixes)
+supabase/tests/        Rallyz flow tests (npm run test:db, npm run test:partner) and main-site fix tests (npm run test:fixes)
 supabase/preflight.sql read-only name-clash check
 supabase/main-site-security-fixes.sql  fixes for the main site (see section 8)
 src/proxy.ts           refreshes the Supabase session on each request
@@ -119,6 +125,7 @@ src/components/        shared UI
 
 **Checks run before handover:**
 - `npm run test:db` (74 checks) runs against stand-ins for your `profiles` and `venues` tables. It covers shared-project safety (existing users get profiles, the main site's functions keep working, sign-up can't be blocked), plus: joining, waitlist promotion, approvals, late cancellation, payments, private notes, chat privacy, instructor review, lesson requests, reminders, admin rights, and attempts to bypass each rule
+- `npm run test:partner` (59 checks) covers posts, asks, matches, blocking, reports, limits and privacy
 - `npm run test:fixes` (50 checks) covers the main-site security fixes
 - `npm run typecheck`, `npm run lint` and `npm run build` all pass
 - the PromptPay QR payload matches the widely used `promptpay-qr` library byte for byte
@@ -130,4 +137,5 @@ Not yet exercised against a live Supabase project: the Google and email sign-in 
 - **LINE Login.** Supabase has no built-in LINE provider. Options: add it through a custom OIDC provider if your Supabase plan supports one, or use a small LINE Login bridge. Google and email cover sign-in meanwhile.
 - **Automatic payment confirmation.** PromptPay is player-marked and organizer-confirmed. Verifying transfers automatically needs a payment provider (for example Opn/Omise or 2C2P).
 - **Push or email notifications.** Notifications are in-app only. Reminders are created hourly but not emailed.
-- **Report and block** ship with P2 (find a partner).
+- **Open matches on real courts** (JAM!-style): sell seats on a court slot from `bk_courts`, hold it in `bk_bookings`, confirm when enough players pay. A natural next step, but it touches the live booking system, so it should follow the main-site security fixes.
+- **Suggested partners and post-game ratings** (P3).

@@ -50,6 +50,8 @@ const VENUE = (await db.query(`insert into public.venues (name, district, addres
 
 await db.exec(readFileSync(MIG + '20261014000100_core.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000200_functions.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000400_partner_enum.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000500_partner.sql', 'utf8'));
 console.log('migrations applied');
 
 // --- shared-project safety

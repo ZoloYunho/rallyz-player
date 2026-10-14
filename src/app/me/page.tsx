@@ -3,14 +3,17 @@ import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { AREAS, levelName } from "@/lib/constants";
 import { EVENT_SELECT } from "@/lib/events";
+import { PLAY_SELECT } from "@/lib/partner";
 import { createClient } from "@/lib/supabase/server";
 import { formatDay, formatTime } from "@/lib/time";
-import type { EventWithOrganizer, LessonRequest, ParticipantStatus, PublicProfile } from "@/lib/types";
+import type { EventWithOrganizer, LessonRequest, ParticipantStatus, PlayAsk, PlayRequest, PublicProfile } from "@/lib/types";
 import { SubmitButton } from "@/components/form";
 import { EventRow } from "@/components/event-row";
+import { PostRow } from "@/components/post-row";
 import { Avatar, Badge, ButtonLink, Card, EmptyState, FoundingBadge, Notice, PageHeader } from "@/components/ui";
 import { signOut } from "@/app/auth/actions";
 import { cancelLesson, respondLesson } from "@/app/instructors/actions";
+import { unblockPlayer } from "@/app/partner/actions";
 import { PaymentForm, ProfileForm } from "./forms";
 
 export const metadata: Metadata = { title: "My page" };
@@ -47,6 +50,23 @@ export default async function MePage(props: PageProps<"/me">) {
       .order("created_at", { ascending: false })
       .limit(30),
   ]);
+
+  const [{ data: myPostsRaw }, { data: myAsksRaw }, { data: blocksRaw }] = await Promise.all([
+    supabase.from("play_requests").select(PLAY_SELECT).eq("author_id", me.id).neq("status", "cancelled").gt("ends_at", now).order("starts_at"),
+    supabase.from("play_request_responses").select("*").eq("user_id", me.id).in("status", ["pending", "accepted"]),
+    supabase.from("user_blocks").select("blocked_id, created_at").eq("blocker_id", me.id),
+  ]);
+  const myPosts = (myPostsRaw ?? []) as PlayRequest[];
+  const myAskList = (myAsksRaw ?? []) as PlayAsk[];
+  const { data: askedPostsRaw } = myAskList.length
+    ? await supabase.from("play_requests").select(PLAY_SELECT).in("id", myAskList.map((a) => a.request_id)).gt("ends_at", now).order("starts_at")
+    : { data: [] };
+  const askedPosts = (askedPostsRaw ?? []) as PlayRequest[];
+  const askByPost = new Map(myAskList.map((a) => [a.request_id, a]));
+  const blockedIds = ((blocksRaw ?? []) as { blocked_id: string }[]).map((b) => b.blocked_id);
+  const { data: blockedPeople } = blockedIds.length
+    ? await supabase.from("player_profiles").select("id, display_name, avatar_url, level, is_founding_organizer").in("id", blockedIds)
+    : { data: [] };
 
   const myEvents = ((joined ?? []) as unknown as { status: ParticipantStatus; event: EventWithOrganizer }[])
     .filter((j) => j.event)
@@ -130,6 +150,23 @@ export default async function MePage(props: PageProps<"/me">) {
         )}
       </section>
 
+      <section id="partner">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Find a partner</h2>
+          <ButtonLink href="/partner/new" variant="secondary" className="py-1.5">Post a game</ButtonLink>
+        </div>
+        {myPosts.length === 0 && askedPosts.length === 0 ? (
+          <EmptyState title="No partner posts or asks">
+            <Link href="/partner" className="text-court underline">See who&apos;s looking to play</Link>
+          </EmptyState>
+        ) : (
+          <div className="space-y-2">
+            {myPosts.map((p) => <PostRow key={p.id} post={p} mine />)}
+            {askedPosts.map((p) => <PostRow key={p.id} post={p} ask={askByPost.get(p.id)} />)}
+          </div>
+        )}
+      </section>
+
       <section id="lessons">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Lessons</h2>
@@ -200,6 +237,26 @@ export default async function MePage(props: PageProps<"/me">) {
           <PaymentForm promptpayId={settings?.promptpay_id ?? ""} />
         </Card>
       </section>
+
+      {(blockedPeople ?? []).length ? (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Blocked players</h2>
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+            {((blockedPeople ?? []) as PublicProfile[]).map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Avatar name={p.display_name} url={p.avatar_url} size={32} />
+                  <span className="text-sm font-medium">{p.display_name || "Player"}</span>
+                </div>
+                <form action={unblockPlayer}>
+                  <input type="hidden" name="user_id" value={p.id} />
+                  <SubmitButton variant="ghost" pending="…">Unblock</SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

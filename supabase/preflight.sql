@@ -24,7 +24,11 @@ with wanted(kind, name) as (
     ('function', 'my_conversations'), ('function', 'review_coach'), ('function', 'request_lesson'),
     ('function', 'respond_lesson_request'), ('function', 'cancel_lesson_request'),
     ('function', 'admin_set_founding_organizer'), ('function', 'send_event_reminders'),
-    ('function', 'admin_weekly_metrics'), ('function', 'rallyz_ensure_profile')
+    ('function', 'admin_weekly_metrics'), ('function', 'rallyz_ensure_profile'),
+    ('table', 'play_requests'), ('table', 'play_request_responses'), ('table', 'user_blocks'), ('table', 'user_reports'),
+    ('type', 'play_request_status'), ('type', 'play_ask_status'), ('type', 'report_status'),
+    ('function', 'ask_to_play'), ('function', 'answer_play_ask'), ('function', 'withdraw_play_ask'),
+    ('function', 'cancel_play_request'), ('function', 'get_play_roster'), ('function', 'report_player'), ('function', 'resolve_report')
 )
 select w.kind, 'public.' || w.name as already_exists
 from wanted w

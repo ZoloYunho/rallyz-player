@@ -53,3 +53,28 @@ export function AreaChips({
     </div>
   );
 }
+
+/** Checkbox chips with separate values and labels (play times, formats). */
+export function ChoiceChips({
+  name,
+  options,
+  defaultValue = [],
+}: {
+  name: string;
+  options: readonly { value: string; label: string }[];
+  defaultValue?: string[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <label
+          key={o.value}
+          className="cursor-pointer rounded-full border border-line bg-white px-3 py-1 text-sm has-[:checked]:border-court has-[:checked]:bg-court has-[:checked]:text-white"
+        >
+          <input type="checkbox" name={name} value={o.value} defaultChecked={defaultValue.includes(o.value)} className="sr-only" />
+          {o.label}
+        </label>
+      ))}
+    </div>
+  );
+}

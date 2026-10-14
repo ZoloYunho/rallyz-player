@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { FormMessage, SubmitButton } from "@/components/form";
-import { AreaChips, LevelPicker } from "@/components/level-picker";
+import { AreaChips, ChoiceChips, LevelPicker } from "@/components/level-picker";
+import { FORMATS, PLAY_TIMES } from "@/lib/constants";
 import { Card, field, hint, label } from "@/components/ui";
 import { completeOnboarding } from "../me/actions";
 
@@ -34,6 +35,17 @@ export function OnboardingForm({ next, name, areas }: { next: string; name: stri
         <p className={label}>3. Where do you usually play?</p>
         <p className="mb-3 text-sm text-muted">Pick any that apply.</p>
         <AreaChips areas={areas} />
+      </Card>
+      <Card className="space-y-4">
+        <div>
+          <p className={label}>4. When do you usually play? <span className="font-normal text-muted">(optional)</span></p>
+          <p className="mb-3 text-sm text-muted">Helps people find you for a game.</p>
+          <ChoiceChips name="play_times" options={PLAY_TIMES} />
+        </div>
+        <div>
+          <p className={label}>Formats you enjoy <span className="font-normal text-muted">(optional)</span></p>
+          <ChoiceChips name="formats" options={FORMATS} />
+        </div>
       </Card>
       <FormMessage state={state} />
       <SubmitButton className="w-full py-3 text-base" pending="Saving…">

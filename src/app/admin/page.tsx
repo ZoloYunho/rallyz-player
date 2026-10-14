@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
-import { baht, levelRange } from "@/lib/constants";
+import { REPORT_REASONS, baht, levelRange } from "@/lib/constants";
 import { COACH_SELECT } from "@/lib/coaches";
 import { createClient } from "@/lib/supabase/server";
 import { formatRelative } from "@/lib/time";
@@ -27,6 +27,28 @@ async function reviewCoach(formData: FormData) {
   revalidatePath("/instructors");
   redirect(`/admin?${new URLSearchParams(error ? { error: error.message } : { ok: approve ? "Instructor approved" : "Sent back for changes" })}`);
 }
+
+async function resolveReport(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = z.uuid().safeParse(formData.get("report_id"));
+  if (!id.success) redirect("/admin");
+  const note = String(formData.get("note") ?? "").trim().slice(0, 500) || null;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("resolve_report", { p_report: id.data, p_note: note });
+  revalidatePath("/admin");
+  redirect(`/admin?${new URLSearchParams(error ? { error: error.message } : { ok: "Report resolved" })}#reports`);
+}
+
+type ReportRow = {
+  id: string;
+  reporter_id: string;
+  reported_id: string;
+  play_request_id: string | null;
+  reason: string;
+  details: string;
+  created_at: string;
+};
 
 async function setFounding(formData: FormData) {
   "use server";
@@ -61,6 +83,21 @@ export default async function AdminPage(props: PageProps<"/admin">) {
       .limit(1000),
   ]);
 
+  const { data: reportRows } = await supabase
+    .from("user_reports")
+    .select("id, reporter_id, reported_id, play_request_id, reason, details, created_at")
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  const reports = (reportRows ?? []) as ReportRow[];
+  const reportPeopleIds = [...new Set(reports.flatMap((r) => [r.reporter_id, r.reported_id]))];
+  const { data: reportPeople } = reportPeopleIds.length
+    ? await supabase.from("player_profiles").select("id, display_name, avatar_url, level, is_founding_organizer").in("id", reportPeopleIds)
+    : { data: [] };
+  const personById = new Map(((reportPeople ?? []) as PublicProfile[]).map((p) => [p.id, p]));
+  const reportCounts = new Map<string, number>();
+  for (const r of reports) reportCounts.set(r.reported_id, (reportCounts.get(r.reported_id) ?? 0) + 1);
+
   // Most active organizers over the last 60 days.
   const counts = new Map<string, { profile: PublicProfile; n: number }>();
   for (const e of (events ?? []) as unknown as { organizer_id: string; organizer: PublicProfile | null }[]) {
@@ -74,7 +111,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Admin" subtitle="Instructor reviews, organizers and weekly numbers." />
+      <PageHeader title="Admin" subtitle="Instructor reviews, player reports, organizers and weekly numbers." />
       {typeof sp.error === "string" ? <Notice tone="danger">{sp.error}</Notice> : null}
       {typeof sp.ok === "string" ? <Notice>{sp.ok}</Notice> : null}
 
@@ -110,6 +147,40 @@ export default async function AdminPage(props: PageProps<"/admin">) {
                 </form>
               </Card>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section id="reports">
+        <h2 className="mb-3 text-lg font-semibold">Reports from players</h2>
+        {reports.length === 0 ? (
+          <EmptyState title="No open reports" />
+        ) : (
+          <div className="space-y-3">
+            {reports.map((r) => {
+              const reported = personById.get(r.reported_id);
+              const reporter = personById.get(r.reporter_id);
+              return (
+                <Card key={r.id} className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Avatar name={reported?.display_name ?? "?"} url={reported?.avatar_url} size={32} />
+                    <span className="font-semibold">{reported?.display_name || "Player"}</span>
+                    <Badge tone="danger">{REPORT_REASONS.find((x) => x.value === r.reason)?.label ?? r.reason}</Badge>
+                    {(reportCounts.get(r.reported_id) ?? 0) > 1 ? <Badge tone="warn">{reportCounts.get(r.reported_id)} open reports</Badge> : null}
+                    <span className="ml-auto text-xs text-muted">{formatRelative(r.created_at)} · by {reporter?.display_name || "Player"}</span>
+                  </div>
+                  {r.details ? <p className="text-sm whitespace-pre-line">{r.details}</p> : null}
+                  {r.play_request_id ? (
+                    <Link href={`/partner/${r.play_request_id}`} className="text-sm text-court underline">Related post</Link>
+                  ) : null}
+                  <form action={resolveReport} className="flex flex-wrap gap-2">
+                    <input type="hidden" name="report_id" value={r.id} />
+                    <input name="note" maxLength={500} placeholder="What you did, e.g. warned by LINE" className={`${field} min-w-60 flex-1`} />
+                    <SubmitButton variant="secondary" pending="…">Mark resolved</SubmitButton>
+                  </form>
+                </Card>
+              );
+            })}
           </div>
         )}
       </section>

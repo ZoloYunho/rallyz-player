@@ -16,6 +16,9 @@ export type Profile = {
   onboarded: boolean;
   is_founding_organizer: boolean;
   is_admin: boolean;
+  play_times: string[];
+  formats: string[];
+  safety_ack_at: string | null;
   created_at: string;
 };
 
@@ -113,7 +116,7 @@ export type LessonRequest = {
 
 export type InboxRow = {
   conversation_id: string;
-  kind: "direct" | "event";
+  kind: "direct" | "event" | "match";
   event_id: string | null;
   title: string;
   other_user_id: string | null;
@@ -142,3 +145,39 @@ export type NotificationRow = {
 
 /** Shape returned by server actions used with useActionState. */
 export type ActionState = { error?: string; ok?: string } | undefined;
+
+export type PlayRequestStatus = "open" | "filled" | "cancelled";
+export type PlayAskStatus = "pending" | "accepted" | "declined" | "withdrawn";
+
+export type PlayRequest = {
+  id: string;
+  author_id: string;
+  starts_at: string;
+  ends_at: string;
+  area: string;
+  venue_id: string | null;
+  venue_name: string | null;
+  court_booked: boolean;
+  format: string;
+  players_needed: number;
+  level_min: number;
+  level_max: number;
+  note: string;
+  status: PlayRequestStatus;
+  accepted_count: number;
+  pending_count: number;
+  created_at: string;
+  author: PublicProfile | null;
+  venue?: { id: string; name: string; district: string; google_maps_url: string | null } | null;
+};
+
+export type PlayAsk = {
+  request_id: string;
+  user_id: string;
+  message: string;
+  status: PlayAskStatus;
+  conversation_id: string | null;
+  closed_by_fill: boolean;
+  times_withdrawn: number;
+  created_at: string;
+};

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:db": "node supabase/tests/db-flows.test.mjs",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:fixes": "node supabase/tests/main-site-fixes.test.mjs"
+    "test:fixes": "node supabase/tests/main-site-fixes.test.mjs",
+    "test:partner": "node supabase/tests/partner.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getUserId, safeNext } from "@/lib/auth";
-import { AREAS } from "@/lib/constants";
+import { AREAS, PLAY_TIMES } from "@/lib/constants";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/types";
@@ -14,6 +14,8 @@ const profileSchema = z.object({
   level: z.coerce.number().int().min(1, "Pick your level").max(9),
   areas: z.array(z.enum(AREAS)).max(AREAS.length),
   bio: z.string().trim().max(500).optional().default(""),
+  play_times: z.array(z.enum(PLAY_TIMES.map((t) => t.value) as [string, ...string[]])).max(PLAY_TIMES.length),
+  formats: z.array(z.enum(["singles", "doubles", "mixed"])).max(3),
 });
 
 function readProfile(formData: FormData) {
@@ -22,6 +24,8 @@ function readProfile(formData: FormData) {
     level: formData.get("level"),
     areas: formData.getAll("areas"),
     bio: formData.get("bio") ?? "",
+    play_times: formData.getAll("play_times"),
+    formats: formData.getAll("formats"),
   });
 }
 

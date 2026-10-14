@@ -64,3 +64,25 @@ export function baht(amount: number | null | undefined): string {
   if (!amount) return "Free";
   return `฿${amount.toLocaleString("en-US")}`;
 }
+
+export const PLAY_TIMES = [
+  { value: "weekday_morning", label: "Weekday mornings" },
+  { value: "weekday_daytime", label: "Weekday daytime" },
+  { value: "weekday_evening", label: "Weekday evenings" },
+  { value: "weekend_morning", label: "Weekend mornings" },
+  { value: "weekend_daytime", label: "Weekend daytime" },
+  { value: "weekend_evening", label: "Weekend evenings" },
+] as const;
+
+export function playTimeLabel(value: string): string {
+  return PLAY_TIMES.find((t) => t.value === value)?.label ?? value;
+}
+
+export const REPORT_REASONS = [
+  { value: "no_show", label: "Didn't turn up" },
+  { value: "harassment", label: "Harassment or threats" },
+  { value: "inappropriate", label: "Inappropriate messages" },
+  { value: "safety", label: "Made me feel unsafe" },
+  { value: "spam", label: "Spam or selling" },
+  { value: "other", label: "Something else" },
+] as const;

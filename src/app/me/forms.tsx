@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
-import { AreaChips } from "@/components/level-picker";
+import { AreaChips, ChoiceChips } from "@/components/level-picker";
 import { field, hint, label } from "@/components/ui";
-import { LEVELS } from "@/lib/constants";
+import { FORMATS, LEVELS, PLAY_TIMES } from "@/lib/constants";
 import type { Profile } from "@/lib/types";
 import { savePromptPay, updateProfile } from "./actions";
 
@@ -26,6 +26,14 @@ export function ProfileForm({ profile, areas }: { profile: Profile; areas: reado
       <div>
         <p className={label}>Areas</p>
         <AreaChips areas={areas} defaultValue={profile.areas} />
+      </div>
+      <div>
+        <p className={label}>When you usually play</p>
+        <ChoiceChips name="play_times" options={PLAY_TIMES} defaultValue={profile.play_times ?? []} />
+      </div>
+      <div>
+        <p className={label}>Formats you enjoy</p>
+        <ChoiceChips name="formats" options={FORMATS} defaultValue={profile.formats ?? []} />
       </div>
       <div>
         <label htmlFor="bio" className={label}>About you <span className="font-normal text-muted">(optional)</span></label>
