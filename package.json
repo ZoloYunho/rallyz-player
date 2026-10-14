@@ -14,6 +14,8 @@
     "test:privacy": "node supabase/tests/privacy.test.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource/oswald": "^5.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "geist": "^1.7.2",

@@ -16,7 +16,8 @@
   --color-danger: #b42318;
   --color-warn: #b54708;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-logo: "Oswald", "Arial Narrow", sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 

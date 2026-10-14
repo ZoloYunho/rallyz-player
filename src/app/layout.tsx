@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
 import Link from "next/link";
 import { Suspense } from "react";
 import { HeaderUser } from "@/components/header-user";
 import { mainSiteUrl, siteUrl } from "@/lib/supabase/env";
+import "@fontsource-variable/dm-sans";
+import "@fontsource/oswald/700.css";
+import { MainNav } from "@/components/main-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,48 +17,36 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#0f6e56" };
 
+// Same links, in the same order, as the main rallyz.club navbar.
 const nav = [
   { href: mainSiteUrl(), label: "Courts" },
   { href: "/events", label: "Events" },
   { href: "/instructors", label: "Instructors" },
   { href: "/partner", label: "Find partner" },
-  { href: "/levels", label: "Levels" },
 ];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${GeistSans.variable} ${GeistMono.variable} min-h-dvh antialiased`}>
+      <body className={`${GeistMono.variable} min-h-dvh antialiased`}>
         <header className="sticky top-0 z-30 border-b border-line bg-white">
-          <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-            <Link href="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-              <span aria-hidden className="inline-block h-4 w-4 rounded-full bg-ball ring-2 ring-court" />
-              Rallyz
+          <div className="flex h-16 items-center gap-4 px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-8">
+            <Link href={mainSiteUrl()} aria-label="Rallyz home" className="font-logo text-[28px] leading-none font-bold tracking-tight text-ink">
+              Rall<span className="text-court">yz</span>
             </Link>
-            <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
-              {nav.map((n) => (
-                <Link key={n.href} href={n.href} className="text-ink/80 hover:text-court">
-                  {n.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="ml-auto">
-              <Suspense fallback={<div className="h-8 w-24" />}>
+            <MainNav items={nav} className="hidden items-center gap-12 md:flex" />
+            <div className="ml-auto flex items-center justify-end">
+              <Suspense fallback={<div className="h-10 w-40" />}>
                 <HeaderUser />
               </Suspense>
             </div>
           </div>
-          <nav className="flex gap-5 overflow-x-auto border-t border-line px-4 py-2 text-sm font-medium md:hidden">
-            {nav.map((n) => (
-              <Link key={n.href} href={n.href} className="whitespace-nowrap text-ink/80 hover:text-court">
-                {n.label}
-              </Link>
-            ))}
-          </nav>
+          <MainNav items={nav} className="flex gap-6 overflow-x-auto border-t border-line px-4 py-2.5 md:hidden" />
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">{children}</main>
         <footer className="mx-auto max-w-6xl px-4 pb-10 text-xs text-muted">
-          Rallyz · Tennis in Bangkok · Times shown in Bangkok time
+          Rallyz · Tennis in Bangkok · Times shown in Bangkok time ·{" "}
+          <Link href="/levels" className="underline hover:text-ink">How levels work</Link>
         </footer>
       </body>
     </html>

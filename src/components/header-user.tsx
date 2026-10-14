@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Avatar, ButtonLink } from "@/components/ui";
+import { Avatar } from "@/components/ui";
+import { mainSiteUrl } from "@/lib/supabase/env";
 
 function CountDot({ count }: { count: number }) {
   if (!count) return null;
@@ -16,9 +17,17 @@ export async function HeaderUser() {
   const profile = await getProfile();
   if (!profile) {
     return (
-      <ButtonLink href="/auth/login" variant="secondary" className="py-1.5">
-        Log in
-      </ButtonLink>
+      <div className="flex items-center gap-6">
+        <Link href="/auth/login" className="text-[15px] text-ink hover:text-court">
+          Log in
+        </Link>
+        <a
+          href={mainSiteUrl()}
+          className="hidden h-11 items-center rounded-lg border border-ink px-4 text-[15px] text-ink hover:bg-paper sm:inline-flex"
+        >
+          List your venue
+        </a>
+      </div>
     );
   }
 
@@ -31,9 +40,12 @@ export async function HeaderUser() {
 
   return (
     <div className="flex items-center gap-3">
-      <ButtonLink href="/events/new" variant="accent" className="hidden py-1.5 sm:inline-flex">
+      <Link
+        href="/events/new"
+        className="hidden h-10 items-center rounded-lg border border-ink px-4 text-[15px] text-ink hover:bg-paper sm:inline-flex"
+      >
         Host an event
-      </ButtonLink>
+      </Link>
       <Link href="/chat" className="relative rounded-full p-1.5 text-ink hover:bg-court-50" aria-label="Messages">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
           <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" strokeLinejoin="round" />
