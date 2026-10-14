@@ -8,6 +8,7 @@ export const EVENT_SELECT =
   "*, organizer:player_profiles!events_organizer_id_fkey(id, display_name, avatar_url, level, is_founding_organizer), venue:venues(id, name, district, address, google_maps_url, photos)";
 
 export type EventFilters = {
+  sport?: string;
   day?: string;
   area?: string;
   level?: number;
@@ -48,6 +49,7 @@ export async function listEvents(filters: EventFilters): Promise<EventWithOrgani
   } else {
     query = query.gte("starts_at", new Date().toISOString());
   }
+  if (filters.sport) query = query.eq("sport", filters.sport);
   if (filters.area) query = query.eq("area", filters.area);
   if (filters.level) query = query.lte("level_min", filters.level).gte("level_max", filters.level);
   if (filters.type) query = query.eq("type", filters.type);

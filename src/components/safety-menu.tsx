@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { FormMessage, SubmitButton } from "@/components/form";
 import { field, label } from "@/components/ui";
 import { REPORT_REASONS } from "@/lib/constants";
-import { blockPlayer, reportPlayer } from "@/app/partner/actions";
+import { blockPlayer, reportPlayer } from "@/app/[sport]/partner/actions";
 
 /** "Report or block" disclosure, used on posts and in direct chats. */
 export function SafetyMenu({ userId, name, postId, back }: { userId: string; name: string; postId?: string; back: string }) {

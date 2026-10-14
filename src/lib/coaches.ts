@@ -5,7 +5,7 @@ import type { CoachWithProfile } from "@/lib/types";
 export const COACH_SELECT =
   "*, profile:player_profiles!coach_profiles_user_id_fkey(id, display_name, avatar_url, level, is_founding_organizer)";
 
-export type CoachFilters = { area?: string; level?: number; maxPrice?: number; language?: string };
+export type CoachFilters = { sport?: string; area?: string; level?: number; maxPrice?: number; language?: string };
 
 export function readCoachFilters(sp: Record<string, string | string[] | undefined>): CoachFilters {
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
@@ -22,6 +22,7 @@ export function readCoachFilters(sp: Record<string, string | string[] | undefine
 export async function listCoaches(f: CoachFilters): Promise<CoachWithProfile[]> {
   const supabase = await createClient();
   let query = supabase.from("coach_profiles").select(COACH_SELECT).eq("status", "approved").order("updated_at", { ascending: false }).limit(100);
+  if (f.sport) query = query.contains("sports", [f.sport]);
   if (f.area) query = query.contains("areas", [f.area]);
   if (f.language) query = query.contains("languages", [f.language]);
   if (f.level) query = query.lte("level_min", f.level).gte("level_max", f.level);

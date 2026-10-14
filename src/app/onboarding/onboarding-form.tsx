@@ -7,6 +7,7 @@ import { AreaChips, ChoiceChips, LevelPicker } from "@/components/level-picker";
 import { FORMATS, PLAY_TIMES } from "@/lib/constants";
 import { Card, field, hint, label } from "@/components/ui";
 import { completeOnboarding } from "../me/actions";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 export function OnboardingForm({ next, name, areas }: { next: string; name: string; areas: readonly string[] }) {
   const [state, action] = useActionState(completeOnboarding, undefined);
@@ -24,7 +25,7 @@ export function OnboardingForm({ next, name, areas }: { next: string; name: stri
         <p className={label}>2. Your level</p>
         <p className="mb-3 text-sm text-muted">
           Be honest; it helps everyone get good games. Not sure? Read the{" "}
-          <Link href="/levels" target="_blank" className="text-court underline">
+          <Link href={`/${DEFAULT_SPORT}/levels`} target="_blank" className="text-court underline">
             level guide
           </Link>
           .

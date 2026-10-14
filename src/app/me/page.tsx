@@ -12,9 +12,10 @@ import { EventRow } from "@/components/event-row";
 import { PostRow } from "@/components/post-row";
 import { Avatar, Badge, ButtonLink, Card, EmptyState, FoundingBadge, Notice, PageHeader } from "@/components/ui";
 import { signOut } from "@/app/auth/actions";
-import { cancelLesson, respondLesson } from "@/app/instructors/actions";
-import { unblockPlayer } from "@/app/partner/actions";
+import { cancelLesson, respondLesson } from "@/app/[sport]/instructors/actions";
+import { unblockPlayer } from "@/app/[sport]/partner/actions";
 import { PaymentForm, ProfileForm } from "./forms";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 export const metadata: Metadata = { title: "My page" };
 
@@ -111,7 +112,7 @@ export default async function MePage(props: PageProps<"/me">) {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">My upcoming games</h2>
-          <Link href="/events" className="text-sm text-court underline">Find events</Link>
+          <Link href={`/${DEFAULT_SPORT}/events`} className="text-sm text-court underline">Find events</Link>
         </div>
         {myEvents.length === 0 ? (
           <EmptyState title="You haven't joined anything yet" />
@@ -130,7 +131,7 @@ export default async function MePage(props: PageProps<"/me">) {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Hosting</h2>
-          <ButtonLink href="/events/new" variant="accent" className="py-1.5">Host an event</ButtonLink>
+          <ButtonLink href={`/${DEFAULT_SPORT}/events/new`} variant="accent" className="py-1.5">Host an event</ButtonLink>
         </div>
         {(hosting ?? []).length === 0 ? (
           <EmptyState title="No upcoming events you're hosting" />
@@ -140,7 +141,7 @@ export default async function MePage(props: PageProps<"/me">) {
               <div key={e.id} className="relative">
                 <EventRow event={e} />
                 {e.pending_count ? (
-                  <Link href={`/events/${e.id}/manage`} className="absolute top-2 right-2">
+                  <Link href={`/${e.sport}/events/${e.id}/manage`} className="absolute top-2 right-2">
                     <Badge tone="warn">{e.pending_count} request{e.pending_count > 1 ? "s" : ""}</Badge>
                   </Link>
                 ) : null}
@@ -153,11 +154,11 @@ export default async function MePage(props: PageProps<"/me">) {
       <section id="partner">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Find a partner</h2>
-          <ButtonLink href="/partner/new" variant="secondary" className="py-1.5">Post a game</ButtonLink>
+          <ButtonLink href={`/${DEFAULT_SPORT}/partner/new`} variant="secondary" className="py-1.5">Post a game</ButtonLink>
         </div>
         {myPosts.length === 0 && askedPosts.length === 0 ? (
           <EmptyState title="No partner posts or asks">
-            <Link href="/partner" className="text-court underline">See who&apos;s looking to play</Link>
+            <Link href={`/${DEFAULT_SPORT}/partner`} className="text-court underline">See who&apos;s looking to play</Link>
           </EmptyState>
         ) : (
           <div className="space-y-2">
@@ -170,7 +171,7 @@ export default async function MePage(props: PageProps<"/me">) {
       <section id="lessons">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Lessons</h2>
-          <Link href="/instructors/apply" className="text-sm text-court underline">
+          <Link href={`/${DEFAULT_SPORT}/instructors/apply`} className="text-sm text-court underline">
             {coach ? "My instructor profile" : "List yourself as an instructor"}
           </Link>
         </div>

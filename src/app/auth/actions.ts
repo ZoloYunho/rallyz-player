@@ -7,6 +7,7 @@ import { safeNext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/supabase/env";
 import type { ActionState } from "@/lib/types";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 async function origin(): Promise<string> {
   const h = await headers();
@@ -20,7 +21,7 @@ function callbackUrl(base: string, next: string) {
 }
 
 export async function signInWithGoogle(formData: FormData) {
-  const next = String(formData.get("next") ?? "/events");
+  const next = String(formData.get("next") ?? `/${DEFAULT_SPORT}/events`);
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -38,7 +39,7 @@ export async function signInWithEmail(_prev: ActionState, formData: FormData): P
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
-    options: { emailRedirectTo: callbackUrl(await origin(), parsed.data.next ?? "/events") },
+    options: { emailRedirectTo: callbackUrl(await origin(), parsed.data.next ?? `/${DEFAULT_SPORT}/events`) },
   });
   if (error) return { error: error.message };
   return { ok: `Check ${parsed.data.email} for a sign-in link.` };

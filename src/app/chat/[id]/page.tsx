@@ -8,7 +8,7 @@ import type { LessonRequest, Message } from "@/lib/types";
 import { SubmitButton } from "@/components/form";
 import { Badge } from "@/components/ui";
 import { SafetyMenu } from "@/components/safety-menu";
-import { cancelLesson, respondLesson } from "@/app/instructors/actions";
+import { cancelLesson, respondLesson } from "@/app/[sport]/instructors/actions";
 import { ChatRoom, type Member } from "./chat-room";
 
 export const metadata: Metadata = { title: "Chat" };
@@ -21,7 +21,7 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
   const supabase = await createClient();
   const { data: conv } = await supabase
     .from("conversations")
-    .select("id, kind, event_id, play_request_id, event:events(id, title, starts_at)")
+    .select("id, kind, event_id, play_request_id, event:events(id, title, starts_at, sport)")
     .eq("id", id)
     .maybeSingle();
   if (!conv) notFound(); // not a member, or doesn't exist
@@ -41,7 +41,7 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
     (m) => ({ id: m.user_id, name: m.profile?.display_name || "Player", avatarUrl: m.profile?.avatar_url ?? null }),
   );
   const messages = ((messageRows ?? []) as Message[]).reverse();
-  const event = (conv as unknown as { event: { id: string; title: string; starts_at: string } | null }).event;
+  const event = (conv as unknown as { event: { id: string; title: string; starts_at: string; sport: string } | null }).event;
   const other = members.find((m) => m.id !== me.id);
   const title =
     conv.kind === "event" ? event?.title ?? "Event chat" : conv.kind === "match" ? "Match chat" : other?.name ?? "Conversation";
@@ -61,7 +61,7 @@ export default async function ConversationPage(props: PageProps<"/chat/[id]">) {
           ) : null}
           {conv.kind === "event" && event ? (
             <p className="text-sm text-muted">
-              {formatDay(event.starts_at)} · <Link href={`/events/${event.id}`} className="text-court underline">Event page</Link> ·{" "}
+              {formatDay(event.starts_at)} · <Link href={`/${event.sport}/events/${event.id}`} className="text-court underline">Event page</Link> ·{" "}
               {members.length} members
             </p>
           ) : null}

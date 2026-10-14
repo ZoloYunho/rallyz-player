@@ -81,6 +81,7 @@ export type RosterEntry = {
 
 export type CoachProfile = {
   user_id: string;
+  sports: string[];
   headline: string;
   bio: string;
   rate_private_thb: number;
@@ -152,6 +153,7 @@ export type PlayAskStatus = "pending" | "accepted" | "declined" | "withdrawn";
 export type PlayRequest = {
   id: string;
   author_id: string;
+  sport: string;
   starts_at: string;
   ends_at: string;
   area: string;

@@ -7,6 +7,7 @@ export const PLAY_SELECT =
   "*, author:player_profiles!play_requests_author_id_fkey(id, display_name, avatar_url, level, is_founding_organizer), venue:venues(id, name, district, google_maps_url)";
 
 export type PartnerFilters = {
+  sport?: string;
   day?: string;
   area?: string;
   format?: string;
@@ -45,6 +46,7 @@ export async function listOpenPosts(f: PartnerFilters): Promise<PlayRequest[]> {
   } else {
     query = query.gt("starts_at", new Date().toISOString());
   }
+  if (f.sport) query = query.eq("sport", f.sport);
   if (f.area) query = query.eq("area", f.area);
   if (f.format) query = query.eq("format", f.format);
   if (f.level) query = query.lte("level_min", f.level).gte("level_max", f.level);

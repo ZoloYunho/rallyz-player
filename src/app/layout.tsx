@@ -7,6 +7,7 @@ import { mainSiteUrl, siteUrl } from "@/lib/supabase/env";
 import "@fontsource-variable/dm-sans";
 import "@fontsource/oswald/700.css";
 import { MainNav } from "@/components/main-nav";
+import { DEFAULT_SPORT } from "@/lib/sports";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,9 +21,9 @@ export const viewport: Viewport = { themeColor: "#0f6e56" };
 // Same links, in the same order, as the main rallyz.club navbar.
 const nav = [
   { href: mainSiteUrl(), label: "Courts" },
-  { href: "/events", label: "Events" },
-  { href: "/instructors", label: "Instructors" },
-  { href: "/partner", label: "Find partner" },
+  { href: `/${DEFAULT_SPORT}/events`, label: "Events" },
+  { href: `/${DEFAULT_SPORT}/instructors`, label: "Instructors" },
+  { href: `/${DEFAULT_SPORT}/partner`, label: "Find partner" },
 ];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -46,7 +47,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">{children}</main>
         <footer className="mx-auto max-w-6xl px-4 pb-10 text-xs text-muted">
           Rallyz · Tennis in Bangkok · Times shown in Bangkok time ·{" "}
-          <Link href="/levels" className="underline hover:text-ink">How levels work</Link>
+          <Link href={`/${DEFAULT_SPORT}/levels`} className="underline hover:text-ink">How levels work</Link>
         </footer>
       </body>
     </html>

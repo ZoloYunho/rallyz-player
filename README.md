@@ -47,7 +47,7 @@ In the Supabase **SQL Editor**, run `supabase/preflight.sql`. It changes nothing
 - **Any rows** (most likely `profiles`): stop and send the list over, so the migrations can be adapted to reuse or sit alongside what's there.
 
 ### 2. Create the Rallyz tables
-Run the five files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
+Run the eight files in `supabase/migrations/` in order (SQL Editor, or `npx supabase db push` if this repo is linked to the project). What they do to the shared project:
 - add new tables, types and functions only; Rallyz's own trigger and helper names start with `rallyz_`
 - keep players in a new `player_profiles` table (name, photo, level, areas). Your `profiles` table, with phone numbers, is never touched or exposed
 - link events to your existing `venues` table, which must exist before you run them
@@ -57,6 +57,11 @@ Run the five files in `supabase/migrations/` in order (SQL Editor, or `npx supab
 - add one trigger on new sign-ups that creates a profile. It is fail-safe: if it ever errors, the sign-up still goes through and the profile is created on first visit.
 
 The third migration schedules reminders with `pg_cron`. The fourth adds a chat type on its own because Postgres needs that committed before the fifth uses it; run them as separate queries in the SQL Editor. Enable **pg_cron** under Database > Extensions first, or skip that file and call `select public.send_event_reminders();` hourly from another scheduler.
+
+The last three: `0600` keeps player profiles private until someone takes part in Rallyz; `0700` gives the website's roles access to the Rallyz tables (newer Supabase projects don't do this automatically); `0800` stores a sport on every event, partner post and instructor.
+
+### Sports
+The site is split by sport in the address: `/tennis/events`, `/tennis/partner`, `/tennis/instructors`, `/tennis/levels`. Only tennis is live (see `src/lib/sports.ts`). Old addresses without a sport (`/events/<id>`, links in older notifications) forward to the record's own sport. To add a sport: add it to `SPORTS`, give it a level scale, and its pages exist straight away; no database change is needed.
 
 ### 3. Auth settings
 In Supabase **Authentication > URL Configuration**:

@@ -37,12 +37,13 @@ await db.exec(`
   grant select on public.venues to anon, authenticated; grant select on public.profiles to anon, authenticated;
 `);
 for (const f of ['20261014000100_core.sql', '20261014000200_functions.sql', '20261014000400_partner_enum.sql',
-                 '20261014000500_partner.sql', '20261014000600_profile_privacy.sql', '20261014000700_grants.sql']) {
+                 '20261014000500_partner.sql', '20261014000600_profile_privacy.sql', '20261014000700_grants.sql', '20261014000800_sport.sql']) {
   await db.exec(readFileSync(MIG + f, 'utf8'));
 }
 // Running it twice must be safe.
 await db.exec(readFileSync(MIG + '20261014000600_profile_privacy.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000700_grants.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000800_sport.sql', 'utf8'));
 ok('privacy migration applies and re-runs');
 
 const id = (n) => `00000000-0000-0000-0000-0000000000${String(n).padStart(2, '0')}`;
@@ -112,6 +113,30 @@ const evs = await q(`select e.title, o.display_name, o.level from events e
 assert.equal(evs[0].display_name, 'org'); ok('anon can list events with organizer names (home page)');
 const coaches = await q(`select c.headline from coach_profiles c`);
 assert.equal(coaches.length, 1); ok('anon sees approved instructors only');
+await db.exec('reset role');
+
+// --- Sports (migration 0800)
+await db.exec(readFileSync(MIG + '20261014000800_sport.sql', 'utf8'));
+ok('sport migration re-runs');
+assert.equal((await q(`select sport from play_requests limit 1`))[0].sport, 'tennis'); ok('existing posts became tennis');
+assert.deepEqual((await q(`select sports from coach_profiles limit 1`))[0].sports, ['tennis']); ok('existing instructors teach tennis');
+await as(U.poster);
+const [padel] = await q(`insert into play_requests (author_id, sport, starts_at, ends_at, area, level_min, level_max)
+  values ($1, 'padel', now() + interval '2 days', now() + interval '2 days 1 hour', 'Ari', 1, 9) returning sport`, [U.poster]);
+assert.equal(padel.sport, 'padel'); ok('players can post for a sport');
+try { await q(`insert into play_requests (author_id, sport, starts_at, ends_at, area, level_min, level_max)
+  values ($1, 'Tennis!', now() + interval '2 days', now() + interval '2 days 1 hour', 'Ari', 1, 9)`, [U.poster]);
+  throw new Error('bad sport accepted'); } catch (e) { assert.match(e.message, /play_requests_sport_slug/); ok('bad sport names refused'); }
+await db.exec('reset role');
+await as(U.org);
+try { await q(`update events set sport = 'padel' where organizer_id = $1`, [U.org]); throw new Error('sport changed'); }
+catch (e) { assert.match(e.message, /permission denied/); ok('an event cannot be moved to another sport'); }
+await db.exec('reset role');
+await as(U.coach);
+await q(`update coach_profiles set sports = '{tennis,padel}' where user_id = $1`, [U.coach]);
+await db.exec('reset role');
+await as(null);
+assert.equal((await q(`select count(*)::int n from coach_profiles where sports @> '{padel}'`))[0].n, 1); ok('instructors can add a sport and be found by it');
 await db.exec('reset role');
 
 console.log('\nALL PRIVACY TESTS PASSED');

@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/ui";
 import { mainSiteUrl } from "@/lib/supabase/env";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 function CountDot({ count }: { count: number }) {
   if (!count) return null;
@@ -41,7 +42,7 @@ export async function HeaderUser() {
   return (
     <div className="flex items-center gap-3">
       <Link
-        href="/events/new"
+        href={`/${DEFAULT_SPORT}/events/new`}
         className="hidden h-10 items-center rounded-lg border border-ink px-4 text-[15px] text-ink hover:bg-paper sm:inline-flex"
       >
         Host an event

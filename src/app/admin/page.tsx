@@ -11,6 +11,7 @@ import { formatRelative } from "@/lib/time";
 import type { CoachWithProfile, PublicProfile } from "@/lib/types";
 import { SubmitButton } from "@/components/form";
 import { Avatar, Badge, Card, EmptyState, Notice, PageHeader, field } from "@/components/ui";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 export const metadata: Metadata = { title: "Admin" };
 
@@ -24,7 +25,7 @@ async function reviewCoach(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("review_coach", { p_user: user.data, p_approve: approve, p_note: note });
   revalidatePath("/admin");
-  revalidatePath("/instructors");
+  revalidatePath("/[sport]/instructors", "page");
   redirect(`/admin?${new URLSearchParams(error ? { error: error.message } : { ok: approve ? "Instructor approved" : "Sent back for changes" })}`);
 }
 
@@ -126,7 +127,7 @@ export default async function AdminPage(props: PageProps<"/admin">) {
                 <div className="flex flex-wrap items-center gap-3">
                   <Avatar name={c.profile?.display_name ?? "?"} url={c.profile?.avatar_url} size={40} />
                   <div className="min-w-0 flex-1">
-                    <Link href={`/instructors/${c.user_id}`} className="font-semibold underline">{c.profile?.display_name || "Coach"}</Link>
+                    <Link href={`/${c.sports[0] ?? DEFAULT_SPORT}/instructors/${c.user_id}`} className="font-semibold underline">{c.profile?.display_name || "Coach"}</Link>
                     <p className="text-sm text-muted">{c.headline}</p>
                   </div>
                   <span className="text-xs text-muted">Submitted {formatRelative(c.updated_at)}</span>

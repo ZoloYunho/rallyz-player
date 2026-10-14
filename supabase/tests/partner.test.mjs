@@ -39,7 +39,7 @@ await db.exec(`
   grant select on public.venues to anon, authenticated; grant select on public.profiles to anon, authenticated;
   create policy venues_public_read on public.venues for select using (true);
 `);
-for (const f of ['20261014000100_core.sql', '20261014000200_functions.sql', '20261014000400_partner_enum.sql', '20261014000500_partner.sql', '20261014000600_profile_privacy.sql', '20261014000700_grants.sql']) {
+for (const f of ['20261014000100_core.sql', '20261014000200_functions.sql', '20261014000400_partner_enum.sql', '20261014000500_partner.sql', '20261014000600_profile_privacy.sql', '20261014000700_grants.sql', '20261014000800_sport.sql']) {
   await db.exec(readFileSync(MIG + f, 'utf8'));
 }
 console.log('migrations applied');

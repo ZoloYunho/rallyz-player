@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listEvents } from "@/lib/events";
+import { DEFAULT_SPORT } from "@/lib/sports";
 import { EventRow } from "@/components/event-row";
 import { ButtonLink, EmptyState } from "@/components/ui";
 
@@ -11,7 +12,7 @@ const ORGANIZER_POINTS = [
 ];
 
 export default async function HomePage() {
-  const events = await listEvents({ limit: 6 });
+  const events = await listEvents({ limit: 6, sport: DEFAULT_SPORT });
 
   return (
     <div className="space-y-14">
@@ -24,15 +25,15 @@ export default async function HomePage() {
           Practice sessions, match play and group lessons with price and open spots shown up front. Join in one tap, chat with the group, pay by PromptPay.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href="/events" variant="accent" className="px-6 py-3 text-base">Find a game</ButtonLink>
-          <ButtonLink href="/instructors" className="border border-white/30 bg-transparent px-6 py-3 text-base hover:bg-white/10">Find an instructor</ButtonLink>
+          <ButtonLink href={`/${DEFAULT_SPORT}/events`} variant="accent" className="px-6 py-3 text-base">Find a game</ButtonLink>
+          <ButtonLink href={`/${DEFAULT_SPORT}/instructors`} className="border border-white/30 bg-transparent px-6 py-3 text-base hover:bg-white/10">Find an instructor</ButtonLink>
         </div>
       </section>
 
       <section>
         <div className="mb-4 flex items-end justify-between">
           <h2 className="text-xl font-bold">Coming up</h2>
-          <Link href="/events" className="text-sm text-court underline">All events</Link>
+          <Link href={`/${DEFAULT_SPORT}/events`} className="text-sm text-court underline">All events</Link>
         </div>
         {events.length ? (
           <div className="space-y-2">{events.map((e) => <EventRow key={e.id} event={e} />)}</div>
@@ -54,7 +55,7 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        <ButtonLink href="/events/new" className="mt-8">Host your first event</ButtonLink>
+        <ButtonLink href={`/${DEFAULT_SPORT}/events/new`} className="mt-8">Host your first event</ButtonLink>
       </section>
     </div>
   );

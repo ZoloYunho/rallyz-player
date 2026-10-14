@@ -52,6 +52,7 @@ await db.exec(readFileSync(MIG + '20261014000400_partner_enum.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000500_partner.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000600_profile_privacy.sql', 'utf8'));
 await db.exec(readFileSync(MIG + '20261014000700_grants.sql', 'utf8'));
+await db.exec(readFileSync(MIG + '20261014000800_sport.sql', 'utf8'));
 console.log('migrations applied');
 
 // --- shared-project safety

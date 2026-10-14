@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
+import { DEFAULT_SPORT } from "@/lib/sports";
 
 /** The signed-in user's id, or null. Verified against Supabase Auth. */
 export const getUserId = cache(async (): Promise<string | null> => {
@@ -57,7 +58,7 @@ export async function requireAdmin(): Promise<Profile> {
  * Only allow same-site relative redirects. Parsing (rather than prefix checks)
  * catches tricks like "/\t/evil.com", which browsers read as "//evil.com".
  */
-export function safeNext(next: string | null | undefined, fallback = "/events"): string {
+export function safeNext(next: string | null | undefined, fallback = `/${DEFAULT_SPORT}/events`): string {
   if (!next || !next.startsWith("/") || /[\x00-\x20\\]/.test(next)) return fallback;
   try {
     const url = new URL(next, "http://rallyz.invalid");

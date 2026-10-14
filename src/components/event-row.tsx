@@ -26,7 +26,7 @@ export function SpotsLabel({ event }: { event: Pick<EventWithOrganizer, "spots_l
 export function EventRow({ event }: { event: EventWithOrganizer }) {
   return (
     <Link
-      href={`/events/${event.id}`}
+      href={`/${event.sport}/events/${event.id}`}
       className="group grid grid-cols-[4.5rem_1fr] gap-4 rounded-xl border border-line bg-white p-4 transition hover:border-court sm:grid-cols-[5.5rem_1fr_auto]"
     >
       <div className="text-center">
